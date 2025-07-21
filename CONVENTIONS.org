@@ -1,0 +1,65 @@
+#+TITLE: Project Conventions
+#+AUTHOR: Fixed Point Explorer Team
+
+* Working Directory
+
+**Always work from the project root directory**
+
+- All paths in source files should be relative to project root
+- Users run commands from project root: `gmake test`, `gmake repl-guile`
+- Scripts must detect their location and adjust paths accordingly
+
+* Load Paths
+
+** Source Files
+```scheme
+;; When loading from portable modules:
+(load "src/portable/y-combinator.scm")  ; From project root
+
+;; When loading within same directory:
+(load "y-combinator.scm")  ; Only if explicitly in that directory
+```
+
+** REPL Configuration
+- `.guile` adds `src/portable` to load path automatically
+- Geiser configurations use relative paths from project root
+- Makefile targets should set appropriate `-L` flags or equivalent
+
+** Test Files
+Tests should load files relative to project root:
+```scheme
+(load "test/test-framework.scm")
+(load "src/portable/y-combinator.scm")
+```
+
+* Implementation-Specific Setup
+
+** Guile
+- Uses `-L` flag for load paths
+- Has `.guile` for REPL configuration
+- Example: `guile3 -L src/portable -L src/guile`
+
+** Chez Scheme  
+- Use `--libdirs` or `CHEZSCHEMELIBDIRS` environment variable
+- No direct `-L` equivalent
+- May need wrapper script or environment setup
+
+** Racket
+- Use `-S` flag for collection paths
+- Or use `#lang` and proper module system
+
+* Makefile Patterns
+
+1. Complex logic → `scripts/` directory
+2. Always assume project root as working directory
+3. Use variables for repeated paths
+4. Document assumptions in comments
+
+* Testing
+
+Run all tests from project root:
+```bash
+gmake test-guile   # Works
+gmake test-chez    # Needs load path fix
+gmake test-racket  # Needs verification
+```
