@@ -1,0 +1,14 @@
+Prompt: Check you can run the lean binaries then run it against the example specs
+
+Implementation:
+- Verified Lean 4.21.0 and Lake 5.0.0 are working
+- Created formal specifications in docs/specs/lean/
+- Simple.lean verifies basic functionality
+- Fibonacci.lean formally specifies all our Scheme functions
+- All test outputs match our Scheme implementation
+
+Key points:
+- Y combinator is difficult in Lean's type system
+- Used standard recursive definitions instead
+- Verified fib, append, length, map, filter match expected outputs
+- Updated .gitignore to exclude 2.3GB Lean installation
