@@ -7,8 +7,10 @@
 - Clean up the grammar and spelling to assist with rebuilding the repo
 - Add notes for the prompt, issues, clarifications, and tests
 - You can find the reviewer as $USER@$HOST
-- Prefer to work in the project root unless working on an experiment
-- All scripts should assume they can be run in cron, an experiment, etc so much check the base location and infer the project root from the script location
+- **Always work from project root**: Use relative paths, not absolute paths with $HOME
+- All scripts should assume they can be run in cron, an experiment, etc so must check the base location and infer the project root from the script location
+- **Path guideline**: Use `tools/formal-methods/lean/bin/lean` not `/home/user/...` paths
+- **Exception**: Only scripts inside subdirectories (like `docs/specs/lean/build.sh`) should cd to project root before starting work
 
 ## Commit Strategy
 
