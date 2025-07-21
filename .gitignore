@@ -1,0 +1,91 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Scheme compiled files
+*.zo
+*.so
+*.o
+*.fasl
+*.ss~
+*.scm~
+
+# Racket
+compiled/
+*.dep
+*.zo
+*.rkt~
+*.rktd
+
+# Guile
+*.go
+.guile_history
+
+# Chez Scheme
+*.boot
+*.wpo
+*.ta6osx
+*.ta6le
+*.a6le
+*.a6osx
+
+# Geiser
+.geiser
+
+# Emacs
+*~
+\#*\#
+.\#*
+.dir-locals.el~
+*.elc
+auto-save-list
+tramp
+
+# Vim
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*_backup
+
+# Build artifacts
+build/
+dist/
+target/
+
+# Dependencies
+node_modules/
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# REPL history
+.repl_history
+.chez_history
+.racket_history
