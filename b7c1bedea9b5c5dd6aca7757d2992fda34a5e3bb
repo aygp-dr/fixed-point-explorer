@@ -1,0 +1,9 @@
+Prompt: Add CLAUDE.md with development conventions
+
+Context: Project has grown and needs documented conventions for consistency
+
+Implementation:
+- Created CLAUDE.md with guidelines from user memory
+- Includes FreeBSD-specific notes (use gmake)
+- Emphasizes location-independent scripts
+- Documents git workflow conventions
