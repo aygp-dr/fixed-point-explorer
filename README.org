@@ -215,3 +215,7 @@ This project is licensed under the MIT License. See [[file:LICENSE][LICENSE]] fo
 - [[https://en.wikipedia.org/wiki/Fixed-point_combinator][Fixed-point combinator (Wikipedia)]]
 - [[file:SETUP.org][SETUP.org]] - Literate programming source
 - [[file:docs/specs/types.org][Type Specifications]] - Formal type documentation
+
+---
+
+[[file:docs/images/repo-barcode.png]]

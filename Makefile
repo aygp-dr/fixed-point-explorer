@@ -30,6 +30,10 @@ TOOLS_DIR := tools/formal-methods
 # Specific target for t-shirt design
 docs/images/tshirt-design.png: docs/images/tshirt-design.svg
 
+# QR code for repository URL
+docs/images/repo-barcode.png: | docs/images
+	qrencode -o $@ -s 8 -m 4 -t PNG "https://github.com/aygp-dr/fixed-point-explorer"
+
 # Help target - default
 help: ## Show this help message
 	@echo "Fixed Point Explorer - Available targets:"
