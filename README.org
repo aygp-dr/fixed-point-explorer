@@ -1,0 +1,215 @@
+#+TITLE: Fixed Point Explorer
+#+AUTHOR: jwalsh
+
+[[https://img.shields.io/badge/Guile-3.0+-blue.svg][https://img.shields.io/badge/Guile-3.0+-blue.svg]]
+[[https://img.shields.io/badge/Chez_Scheme-9.5+-green.svg][https://img.shields.io/badge/Chez_Scheme-9.5+-green.svg]]
+[[https://img.shields.io/badge/Racket-8.0+-red.svg][https://img.shields.io/badge/Racket-8.0+-red.svg]]
+[[https://img.shields.io/badge/License-MIT-yellow.svg][https://img.shields.io/badge/License-MIT-yellow.svg]]
+[[https://img.shields.io/badge/Lean-4.21.0-blue.svg][https://img.shields.io/badge/Lean-4.21.0-blue.svg]]
+[[https://img.shields.io/badge/Lake-5.0.0-green.svg][https://img.shields.io/badge/Lake-5.0.0-green.svg]]
+[[https://img.shields.io/badge/Platform-FreeBSD_|_Linux_|_macOS-lightgrey.svg][https://img.shields.io/badge/Platform-FreeBSD_|_Linux_|_macOS-lightgrey.svg]]
+
+* Overview
+
+Fixed Point Explorer is a multi-implementation exploration of the Y combinator and fixed-point recursion patterns in Scheme. The project demonstrates how recursive functions can be built without explicit self-reference, using the Y combinator as a foundation.
+
+* Features
+
+- ✨ Portable Y combinator implementation working across multiple Scheme dialects
+- 🎯 Pure functional implementations of classic recursive algorithms
+- 🔧 Support for GNU Guile, Chez Scheme, and Racket
+- 📊 Performance benchmarks and comparisons
+- 🧪 Comprehensive test suite with edge case coverage
+- 📚 Literate programming approach with Org-mode
+- 🔍 Formal verification capabilities (Lean 4 support)
+
+* Quick Start
+
+** Prerequisites
+
+Check that you have the required dependencies:
+
+#+BEGIN_SRC bash
+gmake deps
+#+END_SRC
+
+** Running Tests
+
+#+BEGIN_SRC bash
+# Run all tests
+gmake test
+
+# Run tests for specific implementation
+gmake test-guile    # Primary implementation
+gmake test-chez
+gmake test-racket
+#+END_SRC
+
+** Interactive REPL
+
+#+BEGIN_SRC bash
+# Start Guile REPL with project loaded
+gmake repl-guile
+
+# In the REPL, try:
+(load "src/portable/fibonacci.scm")
+(fib 10)  ;; => 55
+(test-fibonacci)
+#+END_SRC
+
+* Project Structure
+
+#+BEGIN_EXAMPLE
+fixed-point-explorer/
+├── src/
+│   ├── portable/         # Cross-implementation code
+│   │   ├── y-combinator.scm
+│   │   ├── fibonacci.scm
+│   │   └── list-ops.scm
+│   ├── guile/           # Guile-specific extensions
+│   ├── chez/            # Chez-specific optimizations
+│   └── racket/          # Racket-specific typed versions
+├── test/
+│   ├── test-framework.scm
+│   └── integration/     # Cross-implementation tests
+├── scripts/
+│   ├── deps.sh          # Dependency checking
+│   └── setup.sh         # Tool installation
+├── lib/geiser/          # Emacs integration
+├── docs/                # Documentation
+└── Makefile             # Build automation
+#+END_EXAMPLE
+
+* Examples
+
+** Basic Y Combinator Usage
+
+#+BEGIN_SRC scheme
+;; Load the Y combinator
+(load "src/portable/y-combinator.scm")
+
+;; Define a recursive function using Y combinator
+(define CONTINUE-fact
+  (lambda (f)
+    (lambda (n)
+      (if (= n 0) 
+          1 
+          (* n (f (- n 1)))))))
+
+(define factorial (Y-explicit CONTINUE-fact))
+(factorial 5)  ;; => 120
+#+END_SRC
+
+** Fibonacci with Memoization
+
+#+BEGIN_SRC scheme
+(load "src/portable/fibonacci.scm")
+
+;; Basic fibonacci
+(fib 20)  ;; => 6765
+
+;; Memoized version for better performance
+(define memo-fib (make-memoized-fib))
+(memo-fib 100)  ;; Computes quickly
+#+END_SRC
+
+** List Operations
+
+#+BEGIN_SRC scheme
+(load "src/portable/list-ops.scm")
+
+;; All list operations implemented using Y combinator
+(append-y '(1 2 3) '(4 5 6))         ;; => (1 2 3 4 5 6)
+(map-y (lambda (x) (* x 2)) '(1 2 3)) ;; => (2 4 6)
+(filter-y even? '(1 2 3 4 5 6))      ;; => (2 4 6)
+(foldr-y + 0 '(1 2 3 4 5))           ;; => 15
+#+END_SRC
+
+* Theoretical Background
+
+The Y combinator, discovered by Haskell Curry, enables recursion in languages that don't have built-in recursion. Its type signature is:
+
+#+BEGIN_EXAMPLE
+Y : ∀α. ((α → α) → (α → α)) → (α → α)
+#+END_EXAMPLE
+
+This project explores practical applications of this theoretical construct across different Scheme implementations.
+
+* Implementation Details
+
+** Guile (Primary Implementation)
+
+GNU Guile 3.0+ is the primary development platform. All portable code is tested first on Guile.
+
+- Uses ~string-contains~ for implementation detection
+- Supports performance timing with ~(ice-9 time)~
+- Compatible with Geiser for interactive development
+
+** Cross-Implementation Compatibility
+
+The portable code avoids implementation-specific features:
+- No ~format~ in core modules (for maximum compatibility)
+- Simple list-based memoization instead of hash tables
+- Explicit module loading with ~load~ instead of module systems
+
+* Performance
+
+Run benchmarks with:
+
+#+BEGIN_SRC bash
+gmake benchmark
+#+END_SRC
+
+Example output (times vary by system):
+- Guile: ~fib(30)~ in ~0.8s
+- Chez: ~fib(30)~ in ~0.3s
+- Racket: ~fib(30)~ in ~1.2s
+
+* Development
+
+** Building from Source
+
+1. Clone the repository
+2. Tangle the literate source (if using ~SETUP.org~):
+   #+BEGIN_SRC bash
+   # In Emacs: C-c C-v t on SETUP.org
+   #+END_SRC
+3. Run tests:
+   #+BEGIN_SRC bash
+   gmake test
+   #+END_SRC
+
+** Contributing
+
+1. Ensure all tests pass: ~gmake test~
+2. Follow the existing code style
+3. Add tests for new functionality
+4. Update documentation as needed
+
+* Formal Verification (Optional)
+
+For formal verification with Lean 4:
+
+#+BEGIN_SRC bash
+# Install Lean 4 (FreeBSD with Linux compatibility)
+gmake setup
+
+# Or manual installation
+gmake -f Makefile.lean lean-install
+#+END_SRC
+
+* License
+
+This project is licensed under the MIT License. See [[file:LICENSE][LICENSE]] for details.
+
+* Acknowledgments
+
+- Y combinator theory from Haskell Curry's work on combinatory logic
+- Inspired by "The Little Schemer" and SICP
+- Scheme community for maintaining excellent implementations
+
+* Resources
+
+- [[https://en.wikipedia.org/wiki/Fixed-point_combinator][Fixed-point combinator (Wikipedia)]]
+- [[file:SETUP.org][SETUP.org]] - Literate programming source
+- [[file:docs/specs/types.org][Type Specifications]] - Formal type documentation
