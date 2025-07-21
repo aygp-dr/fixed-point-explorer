@@ -54,11 +54,33 @@ case "$1" in
             exit 1
         fi
         ;;
+    
+    launch)
+        # Launch with init.el configuration
+        shift  # Remove 'launch' from arguments
+        INIT_FILE="$PROJECT_ROOT/init.el"
+        
+        if [ ! -f "$INIT_FILE" ]; then
+            echo "Error: init.el not found at $INIT_FILE"
+            exit 1
+        fi
+        
+        # Determine Emacs arguments based on terminal/display
+        if [ -t 0 ] && [ -z "$DISPLAY" ]; then
+            EMACS_ARGS="-nw"
+        else
+            EMACS_ARGS=""
+        fi
+        
+        echo "Launching Emacs with Fixed Point Explorer configuration..."
+        exec emacs -q $EMACS_ARGS -l "$INIT_FILE" "$@"
+        ;;
         
     *)
-        echo "Usage: $0 {verify|start}"
-        echo "  verify - Check Emacs/Geiser configuration"
-        echo "  start  - Start Emacs with project settings"
+        echo "Usage: $0 {verify|start|launch [args...]}"
+        echo "  verify       - Check Emacs/Geiser configuration"
+        echo "  start        - Start Emacs with project settings"
+        echo "  launch [args] - Launch Emacs with init.el config"
         exit 1
         ;;
 esac
