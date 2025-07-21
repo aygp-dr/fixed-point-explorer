@@ -89,31 +89,37 @@ repl-racket: ## Start Racket REPL
 
 # Lean configuration
 LEAN_VERSION := v4.21.0
+LEAN_ARCHIVE := lean-$(LEAN_VERSION:v%=%)-linux.zip
 LEAN_DIR := $(TOOLS_DIR)/lean
+LEAN_BIN := $(LEAN_DIR)/bin/lean
 
-# Lean tools (matching your pattern)
-$(TOOLS_DIR)/lean:
+# Create base directories
+$(TOOLS_DIR):
+	mkdir $@
+
+# Lean installation (not .PHONY since it creates a directory)
+$(LEAN_DIR): | $(TOOLS_DIR)
 	@echo "Installing Lean 4..."
-	@mkdir -p $(TOOLS_DIR)
 	@if [ "$$(uname)" = "FreeBSD" ]; then \
 		echo "=== FreeBSD: Using Linux compatibility for Lean ==="; \
 		$(MAKE) lean-install-linux-compat; \
 	elif [ "$$(uname)" = "Darwin" ]; then \
-		curl -L https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.21.0-darwin.tar.gz | tar xz -C $(TOOLS_DIR); \
-		ln -sf $(TOOLS_DIR)/lean-4.21.0-darwin $(LEAN_DIR); \
+		cd $(TOOLS_DIR) && \
+		curl -L https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-$(LEAN_VERSION:v%=%)-darwin.tar.gz | tar xz && \
+		ln -sf lean-$(LEAN_VERSION:v%=%)-darwin lean; \
 	else \
-		curl -L https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.21.0-linux.tar.gz | tar xz -C $(TOOLS_DIR); \
-		ln -sf $(TOOLS_DIR)/lean-4.21.0-linux $(LEAN_DIR); \
+		cd $(TOOLS_DIR) && \
+		curl -L https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-$(LEAN_VERSION:v%=%)-linux.tar.gz | tar xz && \
+		ln -sf lean-$(LEAN_VERSION:v%=%)-linux lean; \
 	fi
 
 # Lean installation for FreeBSD using Linux compatibility
-lean-install-linux-compat: ## Install Lean 4 using Linux compatibility
-	@mkdir -p $(TOOLS_DIR)
+lean-install-linux-compat: | $(TOOLS_DIR)
 	@cd $(TOOLS_DIR) && \
-		wget https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.21.0-linux.zip && \
-		unzip -q lean-4.21.0-linux.zip && \
-		rm lean-4.21.0-linux.zip && \
-		ln -sf lean-4.21.0-linux lean
+		wget https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/$(LEAN_ARCHIVE) && \
+		unzip -q $(LEAN_ARCHIVE) && \
+		rm $(LEAN_ARCHIVE) && \
+		ln -sf lean-$(LEAN_VERSION:v%=%)-linux lean
 	@echo '#check (1 + 1 : Nat)' | $(LEAN_DIR)/bin/lean --stdin || \
 		echo "Note: Lean requires Linux compatibility layer on FreeBSD"
 
@@ -128,9 +134,9 @@ lean-version: ## Show Lean and Lake versions
 
 lean-test: ## Test Lean installation
 	@echo "=== Testing Lean Installation ==="
-	@if [ -x "$(LEAN_DIR)/bin/lean" ]; then \
+	@if [ -x "$(LEAN_BIN)" ]; then \
 		echo "Lean binary found!"; \
-		echo '#check (1 + 1 : Nat)' | $(LEAN_DIR)/bin/lean --stdin || \
+		echo '#check (1 + 1 : Nat)' | $(LEAN_BIN) --stdin || \
 			echo "Note: Binary may need Linux compatibility layer on FreeBSD"; \
 	else \
 		echo "Lean binary not found or not executable"; \
@@ -162,7 +168,8 @@ clean-lean: ## Remove Lean installation
 	@rm -rf $(TOOLS_DIR)/lean-*.tar.gz $(TOOLS_DIR)/lean-*.zip
 	@echo "Lean removed"
 
-lean-tools: $(TOOLS_DIR)/lean
+# Alias for backward compatibility
+lean-tools: $(LEAN_DIR) ## Install Lean tools (alias for $(LEAN_DIR))
 
 # Benchmarks
 benchmark: ## Run performance benchmarks
