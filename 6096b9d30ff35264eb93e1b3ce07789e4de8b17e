@@ -1,0 +1,14 @@
+Prompt: Add a reasonable .gitignore for this repo; also ignore .env since I might put secrets in that and I might have logs in logs/
+
+Implementation:
+- Created comprehensive .gitignore for multi-dialect Scheme project
+- Included .env and logs/ as specifically requested
+- Added patterns for compiled files from Guile, Chez, and Racket
+- Included common editor, OS, and build artifacts
+- Added REPL history files for all three Scheme implementations
+
+Rationale:
+- Prevents accidental commit of secrets (.env files)
+- Excludes compiled artifacts that vary by platform
+- Ignores editor temporary files for clean repository
+- Protects user privacy (REPL history, logs)
