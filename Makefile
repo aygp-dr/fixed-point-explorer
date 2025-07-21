@@ -149,3 +149,10 @@ clean: ## Clean build artifacts
 	@find . -name "*.fasl" -delete
 	@find . -name "*.go" -delete
 	@echo "Cleaned build artifacts"
+
+# Emacs integration
+emacs-verify: ## Verify Emacs/Geiser configuration
+	@./scripts/emacs.sh verify
+
+emacs: ## Start Emacs with project configuration
+	@./scripts/emacs.sh start
