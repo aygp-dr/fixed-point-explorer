@@ -1,0 +1,19 @@
+Prompt: Make sure the core code/examples in Guile Scheme runs and that the unit tests work
+for that since it's my main setup.
+
+Implementation:
+- Fixed Y combinator to handle multiple arguments using apply
+- Removed format dependency for compatibility
+- Replaced hash tables with alists for portability
+- Fixed implementation detection for Guile
+- All display operations use primitive display/displayln
+
+Tests:
+- 14 tests covering fibonacci, list operations, and edge cases
+- All tests pass on GNU Guile 3.0+
+- Test framework provides clear pass/fail feedback
+
+Issues resolved:
+- Fixed infinite recursion in Y combinator
+- Handled variable arity functions (append takes 2 args)
+- Removed Guile-specific features from portable code
