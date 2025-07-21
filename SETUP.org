@@ -1,0 +1,746 @@
+#+TITLE: Fixed Point Explorer - Setup and Configuration
+#+AUTHOR: jwalsh
+#+DATE: 2025-01-21
+#+PROPERTY: header-args :mkdirp yes
+#+OPTIONS: toc:3
+
+* Project: fixed-point-explorer
+
+Exploring Y combinator and fixed-point implementations across Scheme dialects with formal verification.
+
+* Environment Setup
+
+** System Information
+
+#+BEGIN_SRC bash :results output :exports results
+echo "System: $(uname -s) $(uname -r)"
+echo "Emacs: $(emacs --version | head -1)"
+echo "Guile: $(guile3 --version | head -1)"
+echo "Chez: $(chez-scheme --version)"
+echo "Racket: $(racket --version | head -1)"
+#+END_SRC
+
+** Project Structure
+
+#+BEGIN_SRC bash :tangle init-project.sh :shebang #!/bin/sh
+#!/bin/sh
+# Initialize project structure (run from within fixed-point-explorer directory)
+
+echo "Initializing Fixed Point Explorer project structure..."
+
+# Create directory structure
+mkdir -p src/{guile,chez,racket,portable}
+mkdir -p test/{guile,chez,racket,integration}
+mkdir -p docs/{specs,diagrams}
+mkdir -p lib/geiser
+mkdir -p tools/formal-methods
+
+# Create README if it doesn't exist
+if [ ! -f README.org ]; then
+    echo "# Fixed Point Explorer" > README.org
+    echo "Y combinator and recursive function exploration" >> README.org
+fi
+
+echo "Project structure created!"
+echo "Next: Run 'make test' to verify everything works"
+#+END_SRC
+
+* Emacs Geiser Configuration
+
+** Install Geiser (if needed)
+
+#+BEGIN_SRC elisp :tangle .dir-locals.el
+;;; Directory Local Variables for fixed-point-explorer
+;;; For more information see (info "(emacs) Directory Variables")
+
+((nil . ((eval . (progn
+                   ;; Add project root to load path
+                   (add-to-list 'load-path (expand-file-name "lib/geiser" (projectile-project-root)))
+                   ;; Configure Geiser for multiple Scheme implementations
+                   (require 'geiser-mode nil t)
+                   (require 'geiser-guile nil t)
+                   (require 'geiser-chez nil t)
+                   (require 'geiser-racket nil t)))))
+ (scheme-mode . ((geiser-active-implementations . (guile chez racket))
+                 (geiser-default-implementation . guile)
+                 (geiser-guile-binary . "guile3")
+                 (geiser-chez-binary . "chez-scheme")
+                 (geiser-racket-binary . "racket"))))
+#+END_SRC
+
+** Geiser Configuration
+
+#+BEGIN_SRC elisp :tangle lib/geiser/geiser-config.el
+;;; geiser-config.el --- Geiser configuration for fixed-point-explorer
+
+;;; Commentary:
+;; Configure Geiser for multi-implementation Scheme development
+
+;;; Code:
+
+(require 'geiser)
+
+;; Implementation-specific settings
+(setq geiser-guile-binary "guile3")
+(setq geiser-chez-binary "chez-scheme")
+(setq geiser-racket-binary "racket")
+
+;; Load path configuration
+(setq geiser-guile-load-path '("./src/guile" "./src/portable"))
+(setq geiser-chez-load-path '("./src/chez" "./src/portable"))
+(setq geiser-racket-load-path '("./src/racket" "./src/portable"))
+
+;; Default to Guile for .scm files
+(setq geiser-active-implementations '(guile chez racket))
+(setq geiser-default-implementation 'guile)
+
+;; Implementation detection based on file location
+(defun fixed-point-explorer-geiser-impl ()
+  "Detect Scheme implementation based on file path."
+  (let ((file (buffer-file-name)))
+    (cond
+     ((string-match "/guile/" file) 'guile)
+     ((string-match "/chez/" file) 'chez)
+     ((string-match "/racket/" file) 'racket)
+     (t geiser-default-implementation))))
+
+(setq geiser-implementation-alist
+      '(((regexp "\\.scm$") fixed-point-explorer-geiser-impl)
+        ((regexp "\\.ss$") chez)
+        ((regexp "\\.rkt$") racket)))
+
+;; REPL settings
+(setq geiser-repl-query-on-exit-p t)
+(setq geiser-repl-history-filename "~/.geiser_history")
+(setq geiser-repl-use-other-window t)
+
+(provide 'geiser-config)
+;;; geiser-config.el ends here
+#+END_SRC
+
+* Portable Y Combinator Implementation
+
+** Core Implementation
+
+#+BEGIN_SRC scheme :tangle src/portable/y-combinator.scm
+;;; y-combinator.scm --- Portable Y combinator implementation
+;;; Compatible with Guile, Chez, and Racket
+
+;; Y combinator using explicit self-application
+(define Y-explicit
+  (lambda (CONTINUE)
+    ((lambda (x) (CONTINUE (x x)))
+     (lambda (x) (CONTINUE (x x))))))
+
+;; Test if we're running under specific implementations
+(define implementation-name
+  (cond
+   ((and (defined? 'guile-version) guile-version) 'guile)
+   ((and (defined? 'chez-scheme) chez-scheme) 'chez)
+   ((and (defined? 'racket-version) racket-version) 'racket)
+   (else 'unknown)))
+
+;; Portable display with newline
+(define displayln
+  (lambda (x)
+    (display x)
+    (newline)))
+
+;; Export list for module systems
+(define *exports*
+  '(Y-explicit implementation-name displayln))
+#+END_SRC
+
+** Fibonacci Implementation
+
+#+BEGIN_SRC scheme :tangle src/portable/fibonacci.scm
+;;; fibonacci.scm --- Fibonacci using Y combinator
+
+(load "y-combinator.scm")
+
+;; CONTINUE function for Fibonacci
+(define CONTINUE-fib
+  (lambda (f)
+    (lambda (n)
+      (if (<= n 1)
+          n
+          (+ (f (- n 1)) (f (- n 2)))))))
+
+;; Create fibonacci function
+(define fib (Y-explicit CONTINUE-fib))
+
+;; Memoized version for performance
+(define make-memoized-fib
+  (lambda ()
+    (let ((cache (make-hash-table)))
+      (define CONTINUE-memo-fib
+        (lambda (f)
+          (lambda (n)
+            (or (hash-table-ref cache n #f)
+                (let ((result (if (<= n 1)
+                                  n
+                                  (+ (f (- n 1)) (f (- n 2))))))
+                  (hash-table-set! cache n result)
+                  result)))))
+      (Y-explicit CONTINUE-memo-fib))))
+
+;; Test function
+(define test-fibonacci
+  (lambda ()
+    (displayln "Testing Fibonacci:")
+    (displayln (format #f "  fib(0) = ~a (expected: 0)" (fib 0)))
+    (displayln (format #f "  fib(1) = ~a (expected: 1)" (fib 1)))
+    (displayln (format #f "  fib(5) = ~a (expected: 5)" (fib 5)))
+    (displayln (format #f "  fib(10) = ~a (expected: 55)" (fib 10)))
+    (displayln (format #f "  Implementation: ~a" implementation-name))))
+#+END_SRC
+
+** List Operations
+
+#+BEGIN_SRC scheme :tangle src/portable/list-ops.scm
+;;; list-ops.scm --- List operations using Y combinator
+
+(load "y-combinator.scm")
+
+;; Append
+(define CONTINUE-append
+  (lambda (f)
+    (lambda (lst1 lst2)
+      (if (null? lst1)
+          lst2
+          (cons (car lst1) (f (cdr lst1) lst2))))))
+
+(define append-y (Y-explicit CONTINUE-append))
+
+;; Length
+(define CONTINUE-length
+  (lambda (f)
+    (lambda (lst)
+      (if (null? lst)
+          0
+          (+ 1 (f (cdr lst)))))))
+
+(define length-y (Y-explicit CONTINUE-length))
+
+;; Map
+(define CONTINUE-map
+  (lambda (f)
+    (lambda (g lst)
+      (if (null? lst)
+          '()
+          (cons (g (car lst)) (f g (cdr lst)))))))
+
+(define map-y (Y-explicit CONTINUE-map))
+
+;; Filter
+(define CONTINUE-filter
+  (lambda (f)
+    (lambda (pred lst)
+      (cond ((null? lst) '())
+            ((pred (car lst)) (cons (car lst) (f pred (cdr lst))))
+            (else (f pred (cdr lst)))))))
+
+(define filter-y (Y-explicit CONTINUE-filter))
+
+;; Fold-right
+(define CONTINUE-foldr
+  (lambda (f)
+    (lambda (op init lst)
+      (if (null? lst)
+          init
+          (op (car lst) (f op init (cdr lst)))))))
+
+(define foldr-y (Y-explicit CONTINUE-foldr))
+
+;; Test function
+(define test-list-ops
+  (lambda ()
+    (displayln "\nTesting List Operations:")
+    (displayln (format #f "  append-y '(1 2 3) '(4 5 6) = ~a" 
+                       (append-y '(1 2 3) '(4 5 6))))
+    (displayln (format #f "  length-y '(a b c d e) = ~a"
+                       (length-y '(a b c d e))))
+    (displayln (format #f "  map-y (lambda (x) (* x 2)) '(1 2 3 4) = ~a"
+                       (map-y (lambda (x) (* x 2)) '(1 2 3 4))))
+    (displayln (format #f "  filter-y even? '(1 2 3 4 5 6) = ~a"
+                       (filter-y even? '(1 2 3 4 5 6))))
+    (displayln (format #f "  foldr-y + 0 '(1 2 3 4 5) = ~a"
+                       (foldr-y + 0 '(1 2 3 4 5))))))
+#+END_SRC
+
+* Implementation-Specific Code
+
+** Guile-Specific
+
+#+BEGIN_SRC scheme :tangle src/guile/guile-ycombinator.scm
+;;; guile-ycombinator.scm --- Guile-specific Y combinator extensions
+
+(use-modules (ice-9 format)
+             (ice-9 time)
+             (srfi srfi-1))
+
+(load "../portable/y-combinator.scm")
+(load "../portable/fibonacci.scm")
+(load "../portable/list-ops.scm")
+
+;; Guile-specific: timed evaluation
+(define-macro (time-it expr)
+  `(let ((start (get-internal-real-time)))
+     (let ((result ,expr))
+       (let ((elapsed (/ (- (get-internal-real-time) start) 
+                        internal-time-units-per-second)))
+         (format #t "Time: ~,3f seconds~%" elapsed)
+         result))))
+
+;; Performance test
+(define guile-performance-test
+  (lambda ()
+    (displayln "\nGuile Performance Test:")
+    (display "  fib(30) = ")
+    (time-it (displayln (fib 30)))
+    (let ((memo-fib (make-memoized-fib)))
+      (display "  memo-fib(30) = ")
+      (time-it (displayln (memo-fib 30))))))
+#+END_SRC
+
+** Chez-Specific
+
+#+BEGIN_SRC scheme :tangle src/chez/chez-ycombinator.ss
+;;; chez-ycombinator.ss --- Chez Scheme specific extensions
+
+(load "../portable/y-combinator.scm")
+(load "../portable/fibonacci.scm")
+(load "../portable/list-ops.scm")
+
+;; Chez-specific: Define format if not available
+(define format
+  (lambda (port fmt . args)
+    (if port
+        (apply printf fmt args)
+        (apply sprintf fmt args))))
+
+;; Chez-specific optimized Y combinator using case-lambda
+(define Y-chez
+  (lambda (f)
+    (let ((g (case-lambda
+               (() (error 'Y-chez "no arguments"))
+               ((x) ((f (lambda (a) ((g g) a))) x))
+               ((x y) ((f (lambda (a b) ((g g) a b))) x y))
+               ((x y . z) (apply (f (lambda args (apply (g g) args))) x y z)))))
+      (g g))))
+
+;; Test Chez-specific version
+(define test-chez-y
+  (lambda ()
+    (displayln "\nChez-specific Y combinator test:")
+    (let ((fib-chez (Y-chez CONTINUE-fib)))
+      (displayln (format #f "  fib-chez(10) = ~a" (fib-chez 10))))))
+#+END_SRC
+
+** Racket-Specific
+
+#+BEGIN_SRC racket :tangle src/racket/racket-ycombinator.rkt
+#lang racket
+;;; racket-ycombinator.rkt --- Racket-specific Y combinator
+
+(require racket/trace)
+
+;; Load portable implementations
+(load "../portable/y-combinator.scm")
+(load "../portable/fibonacci.scm")
+(load "../portable/list-ops.scm")
+
+;; Racket-specific: Typed Y combinator
+(require typed/racket)
+
+(: Y-typed (All (a b) ((a -> b) -> (a -> b)) -> (a -> b)))
+(define (Y-typed f)
+  ((λ ([x : (Rec X (X -> (a -> b)))])
+     (f (λ (y) ((x x) y))))
+   (λ ([x : (Rec X (X -> (a -> b)))])
+     (f (λ (y) ((x x) y))))))
+
+;; Contracts for safety
+(define/contract (safe-fib n)
+  (-> exact-nonnegative-integer? exact-nonnegative-integer?)
+  (fib n))
+
+;; Traced version for debugging
+(define traced-fib
+  (let ()
+    (trace CONTINUE-fib)
+    (Y-explicit CONTINUE-fib)))
+
+(define (test-racket-features)
+  (displayln "\nRacket-specific features:")
+  (displayln "  Testing contracts...")
+  (displayln (format "  safe-fib(10) = ~a" (safe-fib 10)))
+  (displayln "  Testing traced version (first 5 only)...")
+  (traced-fib 5))
+#+END_SRC
+
+* Test Suite
+
+** Unit Test Framework
+
+#+BEGIN_SRC scheme :tangle test/test-framework.scm
+;;; test-framework.scm --- Simple test framework
+
+(define *test-count* 0)
+(define *pass-count* 0)
+(define *fail-count* 0)
+
+(define (reset-test-stats!)
+  (set! *test-count* 0)
+  (set! *pass-count* 0)
+  (set! *fail-count* 0))
+
+(define (assert-equal expected actual desc)
+  (set! *test-count* (+ *test-count* 1))
+  (if (equal? expected actual)
+      (begin
+        (set! *pass-count* (+ *pass-count* 1))
+        (displayln (format #f "  ✓ ~a" desc)))
+      (begin
+        (set! *fail-count* (+ *fail-count* 1))
+        (displayln (format #f "  ✗ ~a" desc))
+        (displayln (format #f "    Expected: ~a" expected))
+        (displayln (format #f "    Actual:   ~a" actual)))))
+
+(define (test-summary)
+  (displayln (format #f "\nTest Summary: ~a tests, ~a passed, ~a failed"
+                     *test-count* *pass-count* *fail-count*))
+  (= *fail-count* 0))
+#+END_SRC
+
+** Integration Tests
+
+#+BEGIN_SRC scheme :tangle test/integration/test-all.scm
+;;; test-all.scm --- Run all tests
+
+(load "../test-framework.scm")
+(load "../../src/portable/y-combinator.scm")
+(load "../../src/portable/fibonacci.scm")
+(load "../../src/portable/list-ops.scm")
+
+(displayln "=== Fixed Point Explorer Test Suite ===")
+(displayln (format #f "Implementation: ~a" implementation-name))
+
+(reset-test-stats!)
+
+;; Test Y combinator basics
+(displayln "\n1. Y Combinator Basic Tests")
+(assert-equal 0 (fib 0) "fib(0) = 0")
+(assert-equal 1 (fib 1) "fib(1) = 1")
+(assert-equal 5 (fib 5) "fib(5) = 5")
+(assert-equal 55 (fib 10) "fib(10) = 55")
+(assert-equal 6765 (fib 20) "fib(20) = 6765")
+
+;; Test list operations
+(displayln "\n2. List Operation Tests")
+(assert-equal '(1 2 3 4 5 6) 
+              (append-y '(1 2 3) '(4 5 6))
+              "append-y '(1 2 3) '(4 5 6)")
+(assert-equal 5 
+              (length-y '(a b c d e))
+              "length-y '(a b c d e)")
+(assert-equal '(2 4 6 8)
+              (map-y (lambda (x) (* x 2)) '(1 2 3 4))
+              "map-y double '(1 2 3 4)")
+(assert-equal '(2 4 6)
+              (filter-y even? '(1 2 3 4 5 6))
+              "filter-y even? '(1 2 3 4 5 6)")
+(assert-equal 15
+              (foldr-y + 0 '(1 2 3 4 5))
+              "foldr-y + 0 '(1 2 3 4 5)")
+
+;; Test edge cases
+(displayln "\n3. Edge Case Tests")
+(assert-equal '() 
+              (append-y '() '())
+              "append-y empty lists")
+(assert-equal 0
+              (length-y '())
+              "length-y empty list")
+(assert-equal '()
+              (map-y (lambda (x) x) '())
+              "map-y identity empty")
+(assert-equal '()
+              (filter-y (lambda (x) #t) '())
+              "filter-y always-true empty")
+
+(if (test-summary)
+    (begin
+      (displayln "\n✓ All tests passed!")
+      (exit 0))
+    (begin
+      (displayln "\n✗ Some tests failed!")
+      (exit 1)))
+#+END_SRC
+
+* Makefile
+
+#+BEGIN_SRC makefile :tangle Makefile
+# Makefile for fixed-point-explorer
+
+.PHONY: all test test-guile test-chez test-racket clean install-deps lean-tools
+
+# Scheme implementations
+GUILE := guile3
+CHEZ := chez-scheme
+RACKET := racket
+
+# Directories
+SRC_DIR := src
+TEST_DIR := test
+TOOLS_DIR := tools/formal-methods
+
+# Default target
+all: test
+
+# Install dependencies
+install-deps:
+	@echo "Checking Scheme implementations..."
+	@command -v $(GUILE) >/dev/null 2>&1 || echo "Warning: Guile not found"
+	@command -v $(CHEZ) >/dev/null 2>&1 || echo "Warning: Chez Scheme not found"
+	@command -v $(RACKET) >/dev/null 2>&1 || echo "Warning: Racket not found"
+
+# Run all tests
+test: test-guile test-chez test-racket
+
+# Guile tests
+test-guile:
+	@echo "\n=== Running Guile Tests ==="
+	@$(GUILE) -L $(SRC_DIR)/portable -L $(SRC_DIR)/guile \
+		$(TEST_DIR)/integration/test-all.scm
+
+# Chez tests
+test-chez:
+	@echo "\n=== Running Chez Scheme Tests ==="
+	@$(CHEZ) --script $(TEST_DIR)/integration/test-all.scm
+
+# Racket tests
+test-racket:
+	@echo "\n=== Running Racket Tests ==="
+	@$(RACKET) $(TEST_DIR)/integration/test-all.scm
+
+# Run specific implementation tests with extra features
+test-guile-extra:
+	@echo "\n=== Running Guile with Extra Features ==="
+	@$(GUILE) -L $(SRC_DIR)/portable -L $(SRC_DIR)/guile \
+		-c "(load \"$(SRC_DIR)/guile/guile-ycombinator.scm\") \
+		    (test-fibonacci) \
+		    (test-list-ops) \
+		    (guile-performance-test)"
+
+test-chez-extra:
+	@echo "\n=== Running Chez with Extra Features ==="
+	@$(CHEZ) --script $(SRC_DIR)/chez/chez-ycombinator.ss
+
+# REPL targets
+repl-guile:
+	@$(GUILE) -L $(SRC_DIR)/portable -L $(SRC_DIR)/guile
+
+repl-chez:
+	@$(CHEZ) --load $(SRC_DIR)/portable/y-combinator.scm
+
+repl-racket:
+	@$(RACKET) -i -l racket/init
+
+# Lean tools (matching your pattern)
+$(TOOLS_DIR)/lean:
+	@echo "Installing Lean 4..."
+	@mkdir -p $(TOOLS_DIR)
+	@if [ "$$(uname)" = "FreeBSD" ]; then \
+		echo "Note: Lean may need to be built from source on FreeBSD"; \
+		echo "Visit: https://github.com/leanprover/lean4"; \
+	else \
+		curl -L https://github.com/leanprover/lean4/releases/download/v4.5.0/lean-4.5.0-linux.tar.gz | tar xz -C $(TOOLS_DIR); \
+	fi
+
+lean-tools: $(TOOLS_DIR)/lean
+
+# Benchmarks
+benchmark:
+	@echo "\n=== Benchmarking Fibonacci ==="
+	@echo "Guile:"
+	@time $(GUILE) -c "(load \"$(SRC_DIR)/portable/fibonacci.scm\") (fib 30)"
+	@echo "\nChez:"
+	@time $(CHEZ) --script -c "(load \"$(SRC_DIR)/portable/fibonacci.scm\") (fib 30)"
+	@echo "\nRacket:"
+	@time $(RACKET) -e "(load \"$(SRC_DIR)/portable/fibonacci.scm\") (fib 30)"
+
+# Clean
+clean:
+	@find . -name "*.zo" -delete
+	@find . -name "*.so" -delete
+	@find . -name "*.o" -delete
+	@find . -name "*~" -delete
+
+# Help
+help:
+	@echo "Fixed Point Explorer - Available targets:"
+	@echo "  make test          - Run all tests"
+	@echo "  make test-guile    - Run Guile tests"
+	@echo "  make test-chez     - Run Chez tests"  
+	@echo "  make test-racket   - Run Racket tests"
+	@echo "  make repl-guile    - Start Guile REPL"
+	@echo "  make repl-chez     - Start Chez REPL"
+	@echo "  make repl-racket   - Start Racket REPL"
+	@echo "  make benchmark     - Run performance benchmarks"
+	@echo "  make clean         - Clean build artifacts"
+#+END_SRC
+
+* Quick Start Script
+
+#+BEGIN_SRC bash :tangle quickstart.sh :shebang #!/bin/sh
+#!/bin/sh
+# Quick start for fixed-point-explorer
+
+echo "=== Fixed Point Explorer Quick Start ==="
+echo
+
+# Check for Scheme implementations
+check_impl() {
+    if command -v $1 >/dev/null 2>&1; then
+        echo "✓ $1 found: $($1 --version | head -1)"
+    else
+        echo "✗ $1 not found"
+    fi
+}
+
+echo "Checking environment..."
+check_impl guile3
+check_impl chez-scheme
+check_impl racket
+echo
+
+# Run tests
+echo "Running test suite..."
+make test
+
+echo
+echo "To start exploring:"
+echo "  make repl-guile    # Start Guile REPL"
+echo "  make repl-chez     # Start Chez REPL"
+echo "  make repl-racket   # Start Racket REPL"
+echo
+echo "In the REPL, try:"
+echo "  (load \"src/portable/fibonacci.scm\")"
+echo "  (fib 10)"
+echo "  (test-fibonacci)"
+#+END_SRC
+
+* Documentation
+
+** README
+
+#+BEGIN_SRC org :tangle README.org
+#+TITLE: Fixed Point Explorer
+#+AUTHOR: jwalsh
+
+* Overview
+
+Fixed Point Explorer is a multi-implementation exploration of the Y combinator and fixed-point recursion patterns in Scheme.
+
+* Features
+
+- Portable Y combinator implementation
+- Works with Guile, Chez Scheme, and Racket
+- Comprehensive test suite
+- Performance benchmarks
+- Geiser integration for Emacs
+
+* Quick Start
+
+#+BEGIN_SRC bash
+# Run all tests
+make test
+
+# Start a REPL
+make repl-guile   # or repl-chez, repl-racket
+
+# Run benchmarks
+make benchmark
+#+END_SRC
+
+* Project Structure
+
+#+BEGIN_EXAMPLE
+fixed-point-explorer/
+├── src/
+│   ├── portable/      # Cross-implementation code
+│   ├── guile/         # Guile-specific
+│   ├── chez/          # Chez-specific
+│   └── racket/        # Racket-specific
+├── test/
+│   └── integration/   # Test suite
+├── lib/
+│   └── geiser/        # Emacs integration
+└── docs/              # Documentation
+#+END_EXAMPLE
+
+* Examples
+
+#+BEGIN_SRC scheme
+;; Load the Y combinator
+(load "src/portable/y-combinator.scm")
+(load "src/portable/fibonacci.scm")
+
+;; Use it
+(fib 10)  ; => 55
+
+;; Create your own recursive function
+(define CONTINUE-fact
+  (lambda (f)
+    (lambda (n)
+      (if (= n 0) 1 (* n (f (- n 1)))))))
+
+(define fact (Y-explicit CONTINUE-fact))
+(fact 5)  ; => 120
+#+END_SRC
+#+END_SRC
+
+** Type Documentation
+
+#+BEGIN_SRC org :tangle docs/specs/types.org
+#+TITLE: Type Specifications
+
+* Y Combinator Type
+
+The Y combinator has type:
+: Y : ∀α. ((α → α) → (α → α)) → (α → α)
+
+* Function Types
+
+| Function | Type Signature | Termination Measure |
+|----------+---------------+---------------------|
+| fib | Nat → Nat | n decreases |
+| append | List α → List α → List α | length(lst1) decreases |
+| map | (α → β) → List α → List β | length(lst) decreases |
+| filter | (α → Bool) → List α → List α | length(lst) decreases |
+| foldr | (α → β → β) → β → List α → β | length(lst) decreases |
+#+END_SRC
+
+* Running Everything
+
+To set up and test the entire project:
+
+#+BEGIN_SRC bash
+# 1. From within the fixed-point-explorer directory:
+# 2. Tangle this file (in Emacs: C-c C-v t)
+# 3. Initialize the project
+sh init-project.sh
+
+# 4. Run all tests
+make test
+
+# 5. Try specific implementations
+make test-guile-extra
+make test-chez-extra
+
+# 6. Start exploring in a REPL
+make repl-guile
+#+END_SRC
+
+The Geiser setup will automatically detect which implementation to use based on the file path, making it easy to work with multiple Scheme dialects in Emacs.
