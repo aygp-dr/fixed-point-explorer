@@ -23,6 +23,10 @@ TOOLS_DIR := tools/formal-methods
 %.png: %.svg
 	rsvg-convert -o $@ $<
 
+# Pattern rule for Org to Markdown conversion
+%.md: %.org
+	emacs --batch --load org --eval "(setq org-export-with-toc t)" --visit=$< --funcall org-md-export-to-markdown
+
 # Specific target for t-shirt design
 docs/images/tshirt-design.png: docs/images/tshirt-design.svg
 

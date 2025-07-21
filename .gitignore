@@ -55,6 +55,9 @@ tramp
 .DS_Store
 Thumbs.db
 
+# Generated files
+README.md
+
 # Backup files
 *.bak
 *.backup
@@ -70,6 +73,13 @@ tools/formal-methods/lean/
 tools/formal-methods/lean-*/
 tools/formal-methods/*.zip
 tools/formal-methods/*.tar.gz
+
+# Experiments - exclude large downloads
+experiments/**/lean-*.zip
+experiments/**/lean-*-linux/
+experiments/**/lean-*-darwin/
+experiments/**/*.tar.gz
+experiments/**/*.tar
 
 # Dependencies
 node_modules/
