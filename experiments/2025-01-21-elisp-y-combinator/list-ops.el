@@ -58,4 +58,15 @@
 
 (defvar filter-y (Y #'filter-maker)
   "Filter function created with Y combinator")
+
+;; CONTINUE meta-joke: List operations on word characters
+(let* ((word "CONTINUE")
+       (char-list (string-to-list word))
+       (vowels '(?C ?O ?N ?T ?I ?N ?U ?E))
+       (consonants (funcall filter-y (lambda (c) (not (memq c vowels))) char-list))
+       (doubled (funcall map-y (lambda (c) (* c 2)) char-list)))
+  (message "CONTINUE: original length=%d, filtered consonants=%d, doubled sum=%d"
+           (funcall length-y char-list) 
+           (funcall length-y consonants)
+           (apply '+ doubled)))
 ;; Filter:1 ends here

@@ -103,6 +103,14 @@ The Y combinator in Emacs Lisp:
 
 (defvar fact-y (Y #'fact-maker)
   "Factorial function created with Y combinator")
+
+;; CONTINUE meta-joke: Character analysis and factorial computation
+(let* ((word "CONTINUE")
+       (chars (string-to-list word))
+       (ascii-sum (apply '+ chars))
+       (char-product (apply '* (mapcar (lambda (c) (mod c 10)) chars))))
+  (message "CONTINUE: length=%d, ASCII chars=%s, sum=%d, factorial of product mod 10: %d"
+           (length word) chars ascii-sum (funcall fact-y char-product)))
 #+END_SRC
 
 #+RESULTS:
@@ -355,6 +363,11 @@ The detangle reported "Detangled 0 code blocks" because:
 - ✅ **Original org file located**: Link resolution worked
 - ❌ **File write failed**: The org file had an active lock (=.#y-combinator.org=)
 
+**Update**: We discovered a tmux session (`elisp-test`) had the org file open in Emacs. Even after removing the lock file, batch mode detangle couldn't proceed while the file was open in another process. This demonstrates the importance of:
+- Checking for active editing sessions (`tmux ls`)
+- Ensuring files are closed before batch operations
+- Understanding that detangle needs exclusive write access
+
 ** Bidirectional Org-Mode Workflow for Elisp
 
 *** The Complete Cycle
@@ -411,24 +424,136 @@ Our experiment validates this workflow:
 🔗 **The magic:** Special comment markers create bidirectional links between your org prose and generated source code.
 
 ⚡ **Live example:** Implemented Y combinator in elisp with:
+#+BEGIN_SRC elisp :exports code :eval no
+;; Create fibonacci without explicit recursion!
+(defvar fib (Y (lambda (f) 
+                 (lambda (n) 
+                   (if (< n 2) n 
+                     (+ (funcall f (- n 1)) 
+                        (funcall f (- n 2))))))))
+(funcall fib 10) ; => 55
+#+END_SRC
+
 - Fibonacci, factorial, list operations
 - Ackermann function, mutual recursion  
-- Performance benchmarking
+- Performance benchmarking (~2.5x overhead is reasonable)
 - All executable inline + proper source files
 
 🛡️ **Validation:** Deep dive into Emacs ob-tangle.el source revealed the robust link/detangle mechanism that makes this possible.
 
 💡 **Perfect for:** Mathematical programming, algorithm exploration, teaching code concepts with executable documentation.
 
-🔧 **One config line eliminates confirmations:**
-=org-confirm-babel-evaluate nil=
+🔧 **File-local config eliminates confirmations:**
+=# -*- org-confirm-babel-evaluate: nil -*-=
 
 #emacs #orgmode #lisp #literateprogramming #ycombinator
+
+** Enhanced Y Combinator Flow Diagram
+
+#+BEGIN_SRC mermaid :file y-combinator-flow.png :exports results
+graph TD
+    Y["Y(f)"] --> L1["λx.(f λy.((x x) y))"]
+    L1 --> L2["λx.(f λy.((x x) y))"]
+    L2 --> R["Recursive function"]
+    R --> F["f with self-application"]
+    F -.-> R
+    
+    subgraph "Example: Fibonacci"
+        FibMaker["fib-maker"] --> FibY["Y fib-maker"]
+        FibY --> FibFunc["(λn. if n<2 then n else fib(n-1)+fib(n-2))"]
+    end
+#+END_SRC
+
+** Type Theory Commentary
+
+In typed lambda calculus, Y has the type signature:
+=((α → α) → α) → α=
+
+Elisp's dynamic typing allows our implementation but loses compile-time guarantees. This trade-off enables:
+- **Flexibility**: Same Y works for any recursive function shape
+- **Runtime discovery**: Type errors only surface during execution  
+- **Simplicity**: No complex type system to satisfy
+
+** Enhanced Error Handling
+
+#+BEGIN_SRC elisp :tangle y-combinator-safe.el
+(defun Y-safe (f max-depth)
+  "Y combinator with recursion depth limit for safety."
+  (let ((depth 0))
+    ((lambda (x) 
+       (funcall f (lambda (y) 
+                    (if (> (setq depth (1+ depth)) max-depth)
+                        (error "Max recursion depth %d exceeded" max-depth)
+                      (prog1 (funcall (funcall x x) y)
+                        (setq depth (1- depth)))))))
+     (lambda (x) 
+       (funcall f (lambda (y) 
+                    (if (> (setq depth (1+ depth)) max-depth)
+                        (error "Max recursion depth %d exceeded" max-depth)
+                      (prog1 (funcall (funcall x x) y)
+                        (setq depth (1- depth))))))))))
+
+;; Safe fibonacci with depth limit
+(defvar fib-safe (Y-safe #'fib-maker 100)
+  "Fibonacci with stack overflow protection")
+#+END_SRC
+
+** Practical Detangle Example  
+
+This demonstrates the complete round-trip editing workflow:
+
+1. **Original tangle:** This block creates =detangle-demo.el=
+#+BEGIN_SRC elisp :tangle detangle-demo.el
+(defun demo-function (msg)
+  "Original version from org file"
+  (message "Org says: %s" msg))
+#+END_SRC
+
+2. **Edit source file externally:** Modify =detangle-demo.el= to:
+#+BEGIN_EXAMPLE
+(defun demo-function (msg)
+  "Modified version from source file - DETANGLE TEST"
+  (message "Source says: %s [MODIFIED]" msg))
+#+END_EXAMPLE
+
+3. **Detangle back:** Run =M-x org-babel-detangle= 
+   - Finds tangle markers in =detangle-demo.el=
+   - Updates this org block automatically
+   - Preserves bidirectional sync
+
+*Note*: Remove any =.#= lock files first for detangle to work!
+
+*** CONTINUE Meta-Joke Integration
+
+We added CONTINUE meta-jokes to demonstrate detangle workflow:
+1. **Initial attempt**: Added CONTINUE code after tangle markers in .el files
+2. **Discovery**: Detangle only syncs content within markers, not additions after
+3. **Solution**: Add CONTINUE code to org blocks directly (as shown in factorial above)
+4. **Lesson**: The org file is the authoritative source - edits should start there
+
+The tmux session blocking taught us that batch detangle requires exclusive file access!
+
+** Mutual Recursion Clarification
+
+The mutual recursion section uses **two separate Y combinators** with closure capture, not a single Y combinator handling multiple functions. This is a creative workaround for Y's single-recursion nature:
+
+#+BEGIN_SRC elisp :exports code :eval no
+;; Two Y combinators working together
+(setq even-y (Y (lambda (f) (lambda (n) (if (= n 0) t (funcall odd-y (- n 1)))))))
+(setq odd-y  (Y (lambda (f) (lambda (n) (if (= n 0) nil (funcall even-y (- n 1)))))))
+#+END_SRC
+
+Each Y combinator creates a function that references the other through lexical capture.
 
 ** Lessons Learned
 
 1. **File locking matters**: Always check for =.#= lock files before detangling
-2. **Comments are crucial**: =:comments both= enables the magic
-3. **Trust is essential**: Disabling confirmation requires trusted code only
-4. **Source code investigation pays off**: Reading ob-tangle.el revealed the exact failure mode
-5. **Literate programming works**: This workflow genuinely improves code understanding and maintenance
+2. **Tmux sessions can block**: Active editing sessions prevent batch detangle operations
+3. **Comments are crucial**: =:comments both= enables the magic
+4. **Trust is essential**: File-local confirmation disabling requires trusted code only
+5. **Source code investigation pays off**: Reading ob-tangle.el revealed the exact failure mode  
+6. **Literate programming works**: This workflow genuinely improves code understanding and maintenance
+7. **Type flexibility**: Dynamic typing enables elegant Y combinator implementation
+8. **Safety vs elegance**: Add depth limits for production recursive functions
+9. **Detangle scope**: Only updates content within tangle markers, not additions after them
+10. **Process isolation**: Batch operations require exclusive file access - check `tmux ls` for conflicts

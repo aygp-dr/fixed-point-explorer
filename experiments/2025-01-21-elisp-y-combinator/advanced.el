@@ -40,4 +40,13 @@
 (defvar even-odd-pair (even-odd-maker))
 (defvar even-y (car even-odd-pair))
 (defvar odd-y (cadr even-odd-pair))
+
+;; CONTINUE meta-joke: Advanced computations with ASCII values
+(let* ((word "CONTINUE")
+       (ascii-chars (mapcar (lambda (c) c) (string-to-list word)))
+       (sum-ascii (apply '+ ascii-chars))
+       (even-count (length (seq-filter (lambda (c) (funcall even-y c)) ascii-chars)))
+       (ackermann-val (funcall ackermann-y 1 (mod sum-ascii 5))))
+  (message "CONTINUE: ASCII sum=%d, even chars=%d, Ackermann(1,%d)=%d, all Y combinators!"
+           sum-ascii even-count (mod sum-ascii 5) ackermann-val))
 ;; Mutual Recursion (Even/Odd):1 ends here
