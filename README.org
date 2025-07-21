@@ -13,6 +13,8 @@
 
 Fixed Point Explorer is a multi-implementation exploration of the Y combinator and fixed-point recursion patterns in Scheme. The project demonstrates how recursive functions can be built without explicit self-reference, using the Y combinator as a foundation.
 
+[[file:docs/images/tshirt-design.png]]
+
 * Features
 
 - ✨ Portable Y combinator implementation working across multiple Scheme dialects

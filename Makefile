@@ -19,6 +19,13 @@ SRC_DIR := src
 TEST_DIR := test
 TOOLS_DIR := tools/formal-methods
 
+# Pattern rule for SVG to PNG conversion
+%.png: %.svg
+	rsvg-convert -o $@ $<
+
+# Specific target for t-shirt design
+docs/images/tshirt-design.png: docs/images/tshirt-design.svg
+
 # Help target - default
 help: ## Show this help message
 	@echo "Fixed Point Explorer - Available targets:"
