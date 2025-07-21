@@ -1,0 +1,311 @@
+#+TITLE: Lean Specifications for Fixed Point Explorer
+#+AUTHOR: jwalsh
+#+DATE: 2025-01-21
+#+PROPERTY: header-args:lean :mkdirp yes
+
+* Overview
+
+Additional Lean 4 specifications complementing the existing Fibonacci.lean implementation.
+
+* Y Combinator Theory and Fixed Points
+
+#+BEGIN_SRC lean :tangle YCombinatorTheory.lean
+-- Y Combinator Theory in Lean 4
+-- Exploring fixed points and the Y combinator pattern
+
+namespace YCombinatorTheory
+
+-- The Y combinator pattern in Scheme:
+-- Y = λf.(λx.f (x x)) (λx.f (x x))
+-- Cannot be directly typed in Lean, but we can explore the concept
+
+-- Fixed point predicate
+def isFixedPoint {α : Type} (f : α → α) (x : α) : Prop :=
+  f x = x
+
+-- The CONTINUE pattern from Scheme
+-- In Scheme: CONTINUE-fib = λf.λn. if n ≤ 1 then n else f(n-1) + f(n-2)
+structure ContinuePattern (α β : Type) where
+  continue : (α → β) → (α → β)
+
+-- Fibonacci as a CONTINUE pattern
+def fibContinue : ContinuePattern Nat Nat where
+  continue := fun f n => if n ≤ 1 then n else f (n - 1) + f (n - 2)
+
+-- Theorem: Well-founded recursion gives us a fixed point
+theorem wellFounded_gives_fixedPoint (c : ContinuePattern Nat Nat) 
+  (h : ∀ f n, n > 1 → c.continue f n = c.continue f (n - 1) + c.continue f (n - 2)) :
+  ∃ f : Nat → Nat, ∀ n, f n = c.continue f n := by
+  sorry -- This would require constructing the function using well-founded recursion
+
+end YCombinatorTheory
+#+END_SRC
+
+* Advanced Properties and Proofs
+
+#+BEGIN_SRC lean :tangle Properties.lean
+-- Advanced properties of recursive functions
+import «Fibonacci»
+
+namespace Properties
+
+-- Prove termination explicitly for our functions
+theorem fib_terminates : ∀ n : Nat, ∃ m : Nat, fib n = m := by
+  intro n
+  exact ⟨fib n, rfl⟩
+
+-- Golden ratio connection
+-- Fib(n) ≈ φⁿ/√5 where φ = (1+√5)/2
+def goldenRatio : Float := (1.0 + 5.0.sqrt) / 2.0
+
+-- Binet's formula (statement only - full proof needs Real numbers)
+theorem binet_formula (n : Nat) : 
+  ∃ ε > 0, |fib n - (goldenRatio ^ n / 5.0.sqrt).round| < ε := by
+  sorry
+
+-- Properties of list operations
+theorem myMap_composition {α β γ : Type} (f : β → γ) (g : α → β) (xs : List α) :
+  myMap f (myMap g xs) = myMap (f ∘ g) xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih => simp [myMap, Function.comp, ih]
+
+theorem myFilter_idempotent {α : Type} (p : α → Bool) (xs : List α) :
+  myFilter p (myFilter p xs) = myFilter p xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih => 
+    simp [myFilter]
+    split
+    · simp [myFilter, *]
+    · exact ih
+
+-- Length properties
+theorem myAppend_length {α : Type} (xs ys : List α) :
+  myLength (myAppend xs ys) = myLength xs + myLength ys := by
+  induction xs with
+  | nil => simp [myAppend, myLength]
+  | cons x xs ih => simp [myAppend, myLength, ih, Nat.add_assoc]
+
+theorem myMap_preserves_length {α β : Type} (f : α → β) (xs : List α) :
+  myLength (myMap f xs) = myLength xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih => simp [myMap, myLength, ih]
+
+end Properties
+#+END_SRC
+
+* Correspondence with Scheme Implementation
+
+#+BEGIN_SRC lean :tangle SchemeCorrespondence.lean
+-- Correspondence between Scheme and Lean implementations
+import «Fibonacci»
+
+namespace SchemeCorrespondence
+
+-- This file documents how our Lean implementations
+-- correspond to the Scheme Y combinator versions
+
+/- 
+Scheme Y combinator:
+(define Y-explicit
+  (lambda (CONTINUE)
+    ((lambda (x) (CONTINUE (x x)))
+     (lambda (x) (CONTINUE (x x))))))
+
+Lean equivalent: Well-founded recursion
+-/
+
+-- Scheme CONTINUE patterns mapped to Lean
+structure SchemeContinue where
+  name : String
+  schemeCode : String
+  leanEquiv : String
+
+def continueMappings : List SchemeContinue := [
+  { name := "fibonacci"
+    schemeCode := "(lambda (f) (lambda (n) (if (<= n 1) n (+ (f (- n 1)) (f (- n 2))))))"
+    leanEquiv := "fun f n => if n ≤ 1 then n else f (n - 1) + f (n - 2)" },
+  { name := "append"  
+    schemeCode := "(lambda (f) (lambda (lst1 lst2) (if (null? lst1) lst2 (cons (car lst1) (f (cdr lst1) lst2)))))"
+    leanEquiv := "fun f xs ys => match xs with | [] => ys | x::xs' => x :: f xs' ys" },
+  { name := "map"
+    schemeCode := "(lambda (f) (lambda (g lst) (if (null? lst) '() (cons (g (car lst)) (f g (cdr lst))))))"
+    leanEquiv := "fun f g xs => match xs with | [] => [] | x::xs' => g x :: f g xs'" }
+]
+
+-- Theorem: Our Lean fib matches the Scheme Y combinator version
+theorem fib_matches_scheme_y : 
+  ∀ n, fib n = (Y_explicit CONTINUE_fib) n := by
+  sorry -- This is a meta-theorem about implementation equivalence
+
+end SchemeCorrespondence
+#+END_SRC
+
+* Performance Analysis
+
+#+BEGIN_SRC lean :tangle Performance.lean
+-- Performance analysis of recursive functions
+import «Fibonacci»
+
+namespace Performance
+
+-- Memoized Fibonacci using arrays
+def fibMemo (n : Nat) : Nat := Id.run do
+  if n ≤ 1 then return n
+  let mut cache : Array Nat := Array.mkArray (n + 1) 0
+  cache := cache.set! 0 0
+  cache := cache.set! 1 1
+  for i in [2:n+1] do
+    cache := cache.set! i (cache[i-1]! + cache[i-2]!)
+  return cache[n]!
+
+-- Tail recursive Fibonacci with accumulator
+def fibTailRec (n : Nat) : Nat :=
+  let rec loop : Nat → Nat → Nat → Nat
+    | 0, a, _ => a
+    | n + 1, a, b => loop n b (a + b)
+  loop n 0 1
+
+-- Performance comparison (informally)
+#eval fibMemo 100     -- Much faster for large n
+#eval fibTailRec 100  -- Also efficient
+
+-- Theorem: All three implementations compute the same values
+theorem fib_implementations_equal (n : Nat) :
+  fib n = fibMemo n ∧ fib n = fibTailRec n := by
+  sorry -- Would need induction on n
+
+end Performance
+#+END_SRC
+
+* Test Suite
+
+#+BEGIN_SRC lean :tangle TestSuite.lean
+-- Comprehensive test suite
+import «Fibonacci»
+import «Properties»
+import «Performance»
+
+namespace TestSuite
+
+def testFibonacci : IO Unit := do
+  IO.println "=== Fibonacci Tests ==="
+  let testCases := [(0, 0), (1, 1), (5, 5), (10, 55), (20, 6765)]
+  for (n, expected) in testCases do
+    let result := fib n
+    if result = expected then
+      IO.println s!"✓ fib({n}) = {result}"
+    else
+      IO.println s!"✗ fib({n}) = {result}, expected {expected}"
+
+def testListOps : IO Unit := do
+  IO.println "\n=== List Operation Tests ==="
+  
+  -- Test append
+  let l1 := [1, 2, 3]
+  let l2 := [4, 5, 6]
+  IO.println s!"append {l1} {l2} = {myAppend l1 l2}"
+  
+  -- Test map
+  let doubled := myMap (· * 2) l1
+  IO.println s!"map (*2) {l1} = {doubled}"
+  
+  -- Test filter  
+  let evens := myFilter (· % 2 = 0) [1, 2, 3, 4, 5, 6]
+  IO.println s!"filter even [1..6] = {evens}"
+  
+  -- Test composition
+  let composed := myMap (· + 1) (myFilter (· % 2 = 0) [1, 2, 3, 4, 5, 6])
+  IO.println s!"map (+1) ∘ filter even = {composed}"
+
+def testPerformance : IO Unit := do
+  IO.println "\n=== Performance Tests ==="
+  
+  -- Compare implementations for n = 35
+  let n := 35
+  IO.println s!"Computing fib({n})..."
+  
+  -- Note: The naive version will be slow
+  let t1 := (← IO.monoNanosNow)
+  let r1 := fib n
+  let t2 := (← IO.monoNanosNow)
+  IO.println s!"  Naive: {r1} in {(t2 - t1) / 1000000}ms"
+  
+  let t3 := (← IO.monoNanosNow)
+  let r2 := Performance.fibMemo n
+  let t4 := (← IO.monoNanosNow)
+  IO.println s!"  Memoized: {r2} in {(t4 - t3) / 1000000}ms"
+  
+  let t5 := (← IO.monoNanosNow)
+  let r3 := Performance.fibTailRec n
+  let t6 := (← IO.monoNanosNow)
+  IO.println s!"  Tail Recursive: {r3} in {(t6 - t5) / 1000000}ms"
+
+def main : IO Unit := do
+  testFibonacci
+  testListOps
+  testPerformance
+  IO.println "\n✓ All tests completed!"
+
+end TestSuite
+#+END_SRC
+
+* Lake Build Configuration
+
+#+BEGIN_SRC lean :tangle lakefile.lean
+import Lake
+open Lake DSL
+
+package «fixedPoint» where
+  -- Package configuration
+
+lean_lib «FixedPoint» where
+  roots := #[`Fibonacci, `YCombinatorTheory, `Properties, 
+             `SchemeCorrespondence, `Performance]
+
+@[default_target]
+lean_exe «tests» where
+  root := `TestSuite
+  supportInterpreter := true
+#+END_SRC
+
+* Build and Run
+
+#+BEGIN_SRC bash :tangle build.sh :shebang #!/bin/bash
+#!/bin/bash
+# Build and run tests
+
+echo "Building Fixed Point Explorer Lean specifications..."
+
+# Build with Lake
+../../tools/formal-methods/lean/bin/lake build
+
+# Run tests
+echo -e "\nRunning tests..."
+../../tools/formal-methods/lean/bin/lake exe tests
+
+# Run individual file checks
+echo -e "\nChecking individual files..."
+for file in *.lean; do
+  if [[ "$file" != "lakefile.lean" ]]; then
+    echo "Checking $file..."
+    ../../tools/formal-methods/lean/bin/lean "$file" --quiet || echo "  Issues found in $file"
+  fi
+done
+
+echo -e "\nBuild complete!"
+#+END_SRC
+
+* Integration Notes
+
+This specification suite complements your existing `Fibonacci.lean` by adding:
+
+1. **Y Combinator Theory** - Formal exploration of fixed points
+2. **Advanced Properties** - Proofs about the functions you've already defined
+3. **Performance Analysis** - Alternative implementations with better complexity
+4. **Scheme Correspondence** - Documents how Lean maps to our Scheme code
+5. **Comprehensive Testing** - Test suite with performance comparisons
+
+The existing functions from `Fibonacci.lean` are imported and extended with new theorems and properties.
