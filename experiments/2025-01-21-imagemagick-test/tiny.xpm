@@ -1,0 +1,26 @@
+/* XPM */
+static char *tiny[] = {
+/* columns rows colors chars-per-pixel */
+"10 10 10 1 ",
+"  c red",
+". c #E3001C",
+"X c #C60039",
+"o c #AA0055",
+"O c #8E0071",
+"+ c #71008E",
+"@ c #5500AA",
+"# c #3900C6",
+"$ c #1C00E3",
+"% c #0000FF",
+/* pixels */
+"          ",
+"..........",
+"XXXXXXXXXX",
+"oooooooooo",
+"OOOOOOOOOO",
+"++++++++++",
+"@@@@@@@@@@",
+"##########",
+"$$$$$$$$$$",
+"%%%%%%%%%%"
+};

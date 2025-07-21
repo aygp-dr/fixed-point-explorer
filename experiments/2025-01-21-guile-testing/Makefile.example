@@ -1,0 +1,136 @@
+# Makefile.example - Example Makefile for Guile project with testing
+
+# Variables
+GUILE = guile
+GUILD = guild
+GUILE_LOAD_PATH = src
+GUILE_FLAGS = -L $(GUILE_LOAD_PATH)
+
+# Source and test files
+SOURCES = $(wildcard src/*.scm)
+TESTS = $(wildcard tests/*.scm)
+COMPILED = $(SOURCES:.scm=.go)
+
+# Default target
+all: compile
+
+# Compile Guile files
+compile: $(COMPILED)
+
+%.go: %.scm
+	$(GUILD) compile $(GUILE_FLAGS) -o $@ $<
+
+# Run all tests
+test: test-unit test-integration
+
+# Run unit tests only
+test-unit:
+	@echo "Running unit tests..."
+	@for test in tests/unit/*.scm; do \
+		echo "Running $$test"; \
+		$(GUILE) $(GUILE_FLAGS) $$test || exit 1; \
+	done
+
+# Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	@for test in tests/integration/*.scm; do \
+		echo "Running $$test"; \
+		$(GUILE) $(GUILE_FLAGS) $$test || exit 1; \
+	done
+
+# Run tests with coverage (if guile-coverage is available)
+test-coverage:
+	@echo "Running tests with coverage..."
+	$(GUILE) $(GUILE_FLAGS) \
+		-e '(use-modules (system vm coverage))' \
+		-e '(with-code-coverage tests/all-tests.scm)'
+
+# Run specific test file
+test-file:
+	@test -n "$(FILE)" || (echo "Usage: make test-file FILE=path/to/test.scm" && exit 1)
+	$(GUILE) $(GUILE_FLAGS) $(FILE)
+
+# Run tests with TAP output
+test-tap:
+	@echo "Running tests with TAP output..."
+	@for test in $(TESTS); do \
+		$(GUILE) $(GUILE_FLAGS) -e main -s tests/tap-runner.scm $$test; \
+	done
+
+# Run property-based tests (requires guile-quickcheck)
+test-properties:
+	@echo "Running property-based tests..."
+	$(GUILE) $(GUILE_FLAGS) tests/properties/*.scm
+
+# Run performance tests
+test-performance:
+	@echo "Running performance tests..."
+	RUN_PERF_TESTS=1 $(GUILE) $(GUILE_FLAGS) tests/performance/*.scm
+
+# Run tests in parallel
+test-parallel:
+	@echo "Running tests in parallel..."
+	parallel -j 4 $(GUILE) $(GUILE_FLAGS) {} ::: $(TESTS)
+
+# Continuous testing (watch for changes)
+test-watch:
+	@echo "Watching for changes..."
+	@while true; do \
+		inotifywait -e modify,create,delete -r src/ tests/ 2>/dev/null; \
+		clear; \
+		make test; \
+	done
+
+# Clean compiled files
+clean:
+	rm -f $(COMPILED)
+	rm -f tests/*.log
+	find . -name "*.go" -delete
+
+# Install dependencies (example for Guix)
+deps:
+	guix install guile guile-quickcheck guile-lib
+
+# Generate test report
+test-report:
+	@echo "Generating test report..."
+	$(GUILE) $(GUILE_FLAGS) tests/generate-report.scm > test-report.html
+
+# Check code style (example)
+lint:
+	@echo "Checking code style..."
+	@for file in $(SOURCES); do \
+		$(GUILE) $(GUILE_FLAGS) -c "(load \"tools/lint.scm\") (lint-file \"$$file\")" || true; \
+	done
+
+# Run all checks before commit
+pre-commit: lint test
+	@echo "All checks passed!"
+
+# Help target
+help:
+	@echo "Available targets:"
+	@echo "  all              - Compile all source files (default)"
+	@echo "  compile          - Compile Guile source files"
+	@echo "  test             - Run all tests"
+	@echo "  test-unit        - Run unit tests only"
+	@echo "  test-integration - Run integration tests"
+	@echo "  test-coverage    - Run tests with coverage analysis"
+	@echo "  test-file FILE=  - Run specific test file"
+	@echo "  test-tap         - Run tests with TAP output"
+	@echo "  test-properties  - Run property-based tests"
+	@echo "  test-performance - Run performance tests"
+	@echo "  test-parallel    - Run tests in parallel"
+	@echo "  test-watch       - Continuously run tests on file changes"
+	@echo "  test-report      - Generate HTML test report"
+	@echo "  clean            - Remove compiled files"
+	@echo "  deps             - Install dependencies"
+	@echo "  lint             - Check code style"
+	@echo "  pre-commit       - Run all checks (lint + test)"
+	@echo "  help             - Show this help message"
+
+.PHONY: all compile test test-unit test-integration test-coverage \
+        test-file test-tap test-properties test-performance \
+        test-parallel test-watch clean deps test-report lint \
+        pre-commit help

@@ -1,0 +1,7 @@
+# Generated images
+*.png
+*.jpg
+*.gif
+
+# Core dumps
+*.core

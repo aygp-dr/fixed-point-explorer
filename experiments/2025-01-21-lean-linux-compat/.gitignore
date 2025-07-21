@@ -1,0 +1,12 @@
+# Lean downloads and extracted files
+lean-4.21.0-linux.zip
+lean-4.21.0-linux/
+
+# Any other Lean versions we might test
+lean-*.zip
+lean-*-linux/
+lean-*-darwin/
+
+# Test outputs
+*.out
+*.log
