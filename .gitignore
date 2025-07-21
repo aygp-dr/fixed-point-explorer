@@ -65,6 +65,12 @@ build/
 dist/
 target/
 
+# Formal methods tools (HUGE - 2.3GB+)
+tools/formal-methods/lean/
+tools/formal-methods/lean-*/
+tools/formal-methods/*.zip
+tools/formal-methods/*.tar.gz
+
 # Dependencies
 node_modules/
 vendor/

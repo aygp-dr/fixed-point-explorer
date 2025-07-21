@@ -1,0 +1,21 @@
+#+TITLE: Type Specifications
+#+AUTHOR: jwalsh
+
+* Y Combinator Type
+
+The Y combinator has type:
+: Y : ∀α. ((α → α) → (α → α)) → (α → α)
+
+* Function Types
+
+| Function | Type Signature | Termination Measure |
+|----------+---------------+---------------------|
+| fib | Nat → Nat | n decreases |
+| append | List α → List α → List α | length(lst1) decreases |
+| map | (α → β) → List α → List β | length(lst) decreases |
+| filter | (α → Bool) → List α → List α | length(lst) decreases |
+| foldr | (α → β → β) → β → List α → β | length(lst) decreases |
+
+* Lean Formalization
+
+See [[file:lean/]] for formal specifications in Lean 4.
