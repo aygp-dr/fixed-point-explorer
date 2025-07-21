@@ -1,7 +1,13 @@
 -- Performance analysis of recursive functions
-import «Fibonacci»
+-- Made standalone to avoid import issues during testing
 
 namespace Performance
+
+-- Copy of fib from Fibonacci.lean for standalone compilation
+def fib : Nat → Nat
+  | 0 => 0
+  | 1 => 1
+  | n + 2 => fib (n + 1) + fib n
 
 -- Memoized Fibonacci using arrays
 def fibMemo (n : Nat) : Nat := Id.run do
