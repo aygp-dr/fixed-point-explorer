@@ -20,30 +20,128 @@ echo "Chez: $(chez-scheme --version)"
 echo "Racket: $(racket --version | head -1)"
 #+END_SRC
 
+** Lean Installation Makefile
+
+For FreeBSD-specific Lean installation:
+
+#+BEGIN_SRC makefile :tangle Makefile.lean
+# Makefile for Lean 4 setup on FreeBSD
+# Usage: gmake -f Makefile.lean lean-install
+
+LEAN_VERSION := v4.5.0
+TOOLS_DIR := tools/formal-methods
+LEAN_DIR := $(TOOLS_DIR)/lean4
+
+# Detect OS
+UNAME := $(shell uname -s)
+ARCH := $(shell uname -m)
+
+.PHONY: lean-version lean-install lean-test clean-lean
+
+# Check if Lean is already installed
+lean-version:
+	@if [ -x "$(LEAN_DIR)/bin/lean" ]; then \
+		echo "Lean version: $("$(LEAN_DIR)/bin/lean" --version)"; \
+		echo "Lake version: $("$(LEAN_DIR)/bin/lake" --version)"; \
+	else \
+		echo "Lean not found at $(LEAN_DIR)"; \
+		echo "Run 'gmake -f Makefile.lean lean-install' to install"; \
+	fi
+
+# Install Lean - different approaches for different systems
+lean-install:
+	@echo "Installing Lean 4 for $(UNAME) $(ARCH)..."
+	@mkdir -p $(TOOLS_DIR)
+ifeq ($(UNAME),FreeBSD)
+	@echo "=== FreeBSD Detected ==="
+	@echo "Option 1: Using pre-built Linux binary (may work with Linux compat):"
+	@echo "  Downloading Linux binary..."
+	@curl -L -o $(TOOLS_DIR)/lean-linux.tar.gz \
+		https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.5.0-linux.tar.gz
+	@cd $(TOOLS_DIR) && tar xzf lean-linux.tar.gz
+	@mv $(TOOLS_DIR)/lean-4.5.0-linux $(LEAN_DIR)
+	@echo ""
+	@echo "Option 2: Build from source (recommended for FreeBSD):"
+	@echo "  gmake -f Makefile.lean lean-build-source"
+else ifeq ($(UNAME),Darwin)
+	@curl -L -o $(TOOLS_DIR)/lean-darwin.tar.gz \
+		https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.5.0-darwin.tar.gz
+	@cd $(TOOLS_DIR) && tar xzf lean-darwin.tar.gz
+	@mv $(TOOLS_DIR)/lean-4.5.0-darwin $(LEAN_DIR)
+else
+	@curl -L -o $(TOOLS_DIR)/lean-linux.tar.gz \
+		https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.5.0-linux.tar.gz
+	@cd $(TOOLS_DIR) && tar xzf lean-linux.tar.gz
+	@mv $(TOOLS_DIR)/lean-4.5.0-linux $(LEAN_DIR)
+endif
+	@echo "Installation complete. Testing..."
+	@gmake -f Makefile.lean lean-test
+
+# Test Lean installation
+lean-test:
+	@echo "=== Testing Lean Installation ==="
+	@if [ -x "$(LEAN_DIR)/bin/lean" ]; then \
+		echo "Lean binary found!"; \
+		echo "Version: $("$(LEAN_DIR)/bin/lean" --version || echo "Binary execution failed")"; \
+		echo ""; \
+		echo "Testing with simple Lean 4 code..."; \
+		echo '#check (1 + 1 : Nat)' | "$(LEAN_DIR)/bin/lean" --stdin || \
+			echo "Note: Binary may need Linux compatibility layer on FreeBSD"; \
+	else \
+		echo "Lean binary not found or not executable"; \
+	fi
+
+# FreeBSD-specific: Check Linux compatibility
+check-linux-compat:
+ifeq ($(UNAME),FreeBSD)
+	@echo "=== Checking Linux Compatibility Layer ==="
+	@if kldstat | grep -q linux64; then \
+		echo "✓ Linux64 compatibility module loaded"; \
+	else \
+		echo "✗ Linux64 compatibility not loaded"; \
+		echo "  To enable: sudo kldload linux64"; \
+		echo "  To make permanent: add linux_enable=\"YES\" to /etc/rc.conf"; \
+	fi
+	@if [ -d /compat/linux ]; then \
+		echo "✓ Linux compat directory exists"; \
+	else \
+		echo "✗ /compat/linux not found"; \
+		echo "  Install linux base: sudo pkg install linux_base-c7"; \
+	fi
+endif
+
+# Clean Lean installation
+clean-lean:
+	@echo "Removing Lean installation..."
+	@rm -rf $(LEAN_DIR)
+	@rm -rf $(TOOLS_DIR)/lean-*.tar.gz
+	@echo "Lean removed"
+#+END_SRC
+
+
 ** Project Structure
 
-#+BEGIN_SRC bash :tangle init-project.sh :shebang #!/bin/sh
-#!/bin/sh
-# Initialize project structure (run from within fixed-point-explorer directory)
+The project structure will be automatically created when tangling this file:
 
-echo "Initializing Fixed Point Explorer project structure..."
-
-# Create directory structure
-mkdir -p src/{guile,chez,racket,portable}
-mkdir -p test/{guile,chez,racket,integration}
-mkdir -p docs/{specs,diagrams}
-mkdir -p lib/geiser
-mkdir -p tools/formal-methods
-
-# Create README if it doesn't exist
-if [ ! -f README.org ]; then
-    echo "# Fixed Point Explorer" > README.org
-    echo "Y combinator and recursive function exploration" >> README.org
-fi
-
-echo "Project structure created!"
-echo "Next: Run 'make test' to verify everything works"
-#+END_SRC
+#+BEGIN_EXAMPLE
+fixed-point-explorer/
+├── src/
+│   ├── portable/      # Cross-implementation code
+│   ├── guile/         # Guile-specific extensions
+│   ├── chez/          # Chez-specific extensions
+│   └── racket/        # Racket-specific extensions
+├── test/
+│   ├── integration/   # Integration test suite
+│   └── test-framework.scm
+├── lib/
+│   └── geiser/        # Emacs Geiser configuration
+├── docs/
+│   └── specs/         # Type specifications
+├── .dir-locals.el     # Emacs project settings
+├── Makefile           # Build and test automation
+├── quickstart.sh      # Quick start script
+└── README.org         # Project documentation
+#+END_EXAMPLE
 
 * Emacs Geiser Configuration
 
@@ -482,8 +580,15 @@ echo "Next: Run 'make test' to verify everything works"
 
 #+BEGIN_SRC makefile :tangle Makefile
 # Makefile for fixed-point-explorer
+# Default target is help
+.DEFAULT_GOAL := help
 
-.PHONY: all test test-guile test-chez test-racket clean install-deps lean-tools
+# Use gmake explicitly
+MAKE := gmake
+
+.PHONY: help all test test-guile test-chez test-racket clean deps setup lean-tools
+.PHONY: repl-guile repl-chez repl-racket benchmark test-guile-extra test-chez-extra
+.PHONY: lean-version install-deps
 
 # Scheme implementations
 GUILE := guile3
@@ -495,32 +600,48 @@ SRC_DIR := src
 TEST_DIR := test
 TOOLS_DIR := tools/formal-methods
 
-# Default target
-all: test
+# Help target - default
+help: ## Show this help message
+	@echo "Fixed Point Explorer - Available targets:"
+	@echo
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+	@echo
+	@echo "Example usage:"
+	@echo "  gmake deps          # Check dependencies"
+	@echo "  gmake test          # Run all tests"
+	@echo "  gmake repl-guile    # Start Guile REPL"
 
-# Install dependencies
-install-deps:
-	@echo "Checking Scheme implementations..."
-	@command -v $(GUILE) >/dev/null 2>&1 || echo "Warning: Guile not found"
-	@command -v $(CHEZ) >/dev/null 2>&1 || echo "Warning: Chez Scheme not found"
-	@command -v $(RACKET) >/dev/null 2>&1 || echo "Warning: Racket not found"
+all: test ## Run all tests (alias for test)
+
+deps: ## Check for required dependencies
+	@./scripts/deps.sh
+
+setup: ## Download and install formal methods tools
+	@./scripts/setup.sh
+
+# Legacy target for compatibility
+install-deps: deps
 
 # Run all tests
-test: test-guile test-chez test-racket
+test: ## Run tests for all Scheme implementations
+	@$(MAKE) test-guile
+	@$(MAKE) test-chez
+	@$(MAKE) test-racket
 
 # Guile tests
-test-guile:
+test-guile: ## Run Guile tests
 	@echo "\n=== Running Guile Tests ==="
 	@$(GUILE) -L $(SRC_DIR)/portable -L $(SRC_DIR)/guile \
 		$(TEST_DIR)/integration/test-all.scm
 
 # Chez tests
-test-chez:
+test-chez: ## Run Chez Scheme tests
 	@echo "\n=== Running Chez Scheme Tests ==="
 	@$(CHEZ) --script $(TEST_DIR)/integration/test-all.scm
 
 # Racket tests
-test-racket:
+test-racket: ## Run Racket tests
 	@echo "\n=== Running Racket Tests ==="
 	@$(RACKET) $(TEST_DIR)/integration/test-all.scm
 
@@ -538,30 +659,44 @@ test-chez-extra:
 	@$(CHEZ) --script $(SRC_DIR)/chez/chez-ycombinator.ss
 
 # REPL targets
-repl-guile:
+repl-guile: ## Start Guile REPL with project loaded
 	@$(GUILE) -L $(SRC_DIR)/portable -L $(SRC_DIR)/guile
 
-repl-chez:
+repl-chez: ## Start Chez REPL with project loaded
 	@$(CHEZ) --load $(SRC_DIR)/portable/y-combinator.scm
 
-repl-racket:
+repl-racket: ## Start Racket REPL
 	@$(RACKET) -i -l racket/init
 
 # Lean tools (matching your pattern)
 $(TOOLS_DIR)/lean:
 	@echo "Installing Lean 4..."
 	@mkdir -p $(TOOLS_DIR)
-	@if [ "$$(uname)" = "FreeBSD" ]; then \
-		echo "Note: Lean may need to be built from source on FreeBSD"; \
-		echo "Visit: https://github.com/leanprover/lean4"; \
+	@if [ "$(uname)" = "FreeBSD" ]; then \
+		echo "=== FreeBSD: Using Makefile.lean for proper setup ==="; \
+		gmake -f Makefile.lean lean-install; \
+	elif [ "$(uname)" = "Darwin" ]; then \
+		curl -L https://github.com/leanprover/lean4/releases/download/v4.5.0/lean-4.5.0-darwin.tar.gz | tar xz -C $(TOOLS_DIR); \
+		ln -sf $(TOOLS_DIR)/lean-4.5.0-darwin $(TOOLS_DIR)/lean; \
 	else \
 		curl -L https://github.com/leanprover/lean4/releases/download/v4.5.0/lean-4.5.0-linux.tar.gz | tar xz -C $(TOOLS_DIR); \
+		ln -sf $(TOOLS_DIR)/lean-4.5.0-linux $(TOOLS_DIR)/lean; \
+	fi
+
+# Additional Lean targets for FreeBSD
+lean-version:
+	@if [ -d "$(TOOLS_DIR)/lean4" ]; then \
+		$(TOOLS_DIR)/lean4/bin/lean --version; \
+	elif [ -d "$(TOOLS_DIR)/lean" ]; then \
+		$(TOOLS_DIR)/lean/bin/lean --version; \
+	else \
+		echo "Lean not installed. Run: gmake lean-tools"; \
 	fi
 
 lean-tools: $(TOOLS_DIR)/lean
 
 # Benchmarks
-benchmark:
+benchmark: ## Run performance benchmarks
 	@echo "\n=== Benchmarking Fibonacci ==="
 	@echo "Guile:"
 	@time $(GUILE) -c "(load \"$(SRC_DIR)/portable/fibonacci.scm\") (fib 30)"
@@ -571,24 +706,14 @@ benchmark:
 	@time $(RACKET) -e "(load \"$(SRC_DIR)/portable/fibonacci.scm\") (fib 30)"
 
 # Clean
-clean:
+clean: ## Clean build artifacts
 	@find . -name "*.zo" -delete
 	@find . -name "*.so" -delete
 	@find . -name "*.o" -delete
 	@find . -name "*~" -delete
-
-# Help
-help:
-	@echo "Fixed Point Explorer - Available targets:"
-	@echo "  make test          - Run all tests"
-	@echo "  make test-guile    - Run Guile tests"
-	@echo "  make test-chez     - Run Chez tests"  
-	@echo "  make test-racket   - Run Racket tests"
-	@echo "  make repl-guile    - Start Guile REPL"
-	@echo "  make repl-chez     - Start Chez REPL"
-	@echo "  make repl-racket   - Start Racket REPL"
-	@echo "  make benchmark     - Run performance benchmarks"
-	@echo "  make clean         - Clean build artifacts"
+	@find . -name "*.fasl" -delete
+	@find . -name "*.go" -delete
+	@echo "Cleaned build artifacts"
 #+END_SRC
 
 * Quick Start Script
@@ -727,20 +852,47 @@ The Y combinator has type:
 To set up and test the entire project:
 
 #+BEGIN_SRC bash
-# 1. From within the fixed-point-explorer directory:
-# 2. Tangle this file (in Emacs: C-c C-v t)
-# 3. Initialize the project
-sh init-project.sh
+# From within the fixed-point-explorer directory:
+# 1. Tangle this file (in Emacs: C-c C-v t)
+#    This creates all directories and files automatically
 
-# 4. Run all tests
+# 2. Run all tests
 make test
 
-# 5. Try specific implementations
+# 3. Try specific implementations
 make test-guile-extra
 make test-chez-extra
 
-# 6. Start exploring in a REPL
+# 4. Start exploring in a REPL
 make repl-guile
+
+# 5. (Optional) Install Lean 4 for formal verification
+gmake -f Makefile.lean lean-version       # Check if installed
+gmake -f Makefile.lean check-linux-compat # FreeBSD: check compatibility
+gmake -f Makefile.lean lean-install       # Install Lean
 #+END_SRC
+
+** Lean on FreeBSD
+
+For Lean 4 on FreeBSD, you have two options:
+
+1. **Linux Binary with Compatibility Layer** (easier):
+   #+BEGIN_SRC bash
+   # Enable Linux compatibility
+   sudo kldload linux64
+   sudo pkg install linux_base-c7
+   
+   # Install Lean
+   gmake -f Makefile.lean lean-install
+   #+END_SRC
+
+2. **Build from Source** (recommended for native performance):
+   #+BEGIN_SRC bash
+   # Install prerequisites
+   sudo pkg install cmake gcc git
+   
+   # Build Lean
+   gmake -f Makefile.lean lean-build-source
+   #+END_SRC
 
 The Geiser setup will automatically detect which implementation to use based on the file path, making it easy to work with multiple Scheme dialects in Emacs.
