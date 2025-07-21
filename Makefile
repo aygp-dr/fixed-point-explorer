@@ -89,7 +89,7 @@ repl-racket: ## Start Racket REPL
 
 # Lean configuration
 LEAN_VERSION := v4.21.0
-LEAN_DIR := $(TOOLS_DIR)/lean4
+LEAN_DIR := $(TOOLS_DIR)/lean
 
 # Lean tools (matching your pattern)
 $(TOOLS_DIR)/lean:
@@ -110,23 +110,57 @@ $(TOOLS_DIR)/lean:
 lean-install-linux-compat: ## Install Lean 4 using Linux compatibility
 	@mkdir -p $(TOOLS_DIR)
 	@cd $(TOOLS_DIR) && \
-		curl -L -o lean-linux.zip \
-		https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.21.0-linux.zip && \
-		unzip -q lean-linux.zip && \
-		rm lean-linux.zip && \
-		ln -sf lean-4.21.0-linux lean4
+		wget https://github.com/leanprover/lean4/releases/download/$(LEAN_VERSION)/lean-4.21.0-linux.zip && \
+		unzip -q lean-4.21.0-linux.zip && \
+		rm lean-4.21.0-linux.zip && \
+		ln -sf lean-4.21.0-linux lean
 	@echo '#check (1 + 1 : Nat)' | $(LEAN_DIR)/bin/lean --stdin || \
 		echo "Note: Lean requires Linux compatibility layer on FreeBSD"
 
 # Additional Lean targets for FreeBSD
-lean-version:
-	@if [ -d "$(TOOLS_DIR)/lean4" ]; then \
-		$(TOOLS_DIR)/lean4/bin/lean --version; \
-	elif [ -d "$(TOOLS_DIR)/lean" ]; then \
-		$(TOOLS_DIR)/lean/bin/lean --version; \
+lean-version: ## Show Lean and Lake versions
+	@if [ -x "$(LEAN_DIR)/bin/lean" ]; then \
+		$(LEAN_DIR)/bin/lean --version; \
+		$(LEAN_DIR)/bin/lake --version; \
 	else \
 		echo "Lean not installed. Run: gmake lean-tools"; \
 	fi
+
+lean-test: ## Test Lean installation
+	@echo "=== Testing Lean Installation ==="
+	@if [ -x "$(LEAN_DIR)/bin/lean" ]; then \
+		echo "Lean binary found!"; \
+		echo '#check (1 + 1 : Nat)' | $(LEAN_DIR)/bin/lean --stdin || \
+			echo "Note: Binary may need Linux compatibility layer on FreeBSD"; \
+	else \
+		echo "Lean binary not found or not executable"; \
+	fi
+
+lean-check-compat: ## Check FreeBSD Linux compatibility
+	@if [ "$$(uname)" = "FreeBSD" ]; then \
+		echo "=== Checking Linux Compatibility Layer ==="; \
+		if kldstat | grep -q linux64; then \
+			echo "✓ Linux64 compatibility module loaded"; \
+		else \
+			echo "✗ Linux64 compatibility not loaded"; \
+			echo "  To enable: sudo kldload linux64"; \
+			echo "  To make permanent: add linux_enable=\"YES\" to /etc/rc.conf"; \
+		fi; \
+		if [ -d /compat/linux ]; then \
+			echo "✓ Linux compat directory exists"; \
+		else \
+			echo "✗ /compat/linux not found"; \
+			echo "  Install linux base: sudo pkg install linux_base-c7"; \
+		fi; \
+	else \
+		echo "Not on FreeBSD, skipping compatibility check"; \
+	fi
+
+clean-lean: ## Remove Lean installation
+	@echo "Removing Lean installation..."
+	@rm -rf $(LEAN_DIR)
+	@rm -rf $(TOOLS_DIR)/lean-*.tar.gz $(TOOLS_DIR)/lean-*.zip
+	@echo "Lean removed"
 
 lean-tools: $(TOOLS_DIR)/lean
 
