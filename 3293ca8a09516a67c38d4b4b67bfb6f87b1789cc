@@ -1,0 +1,14 @@
+Prompt: Port any needed commands from Makefile.lean to main Makefile
+
+Context: Two Makefiles existed, wanted to consolidate
+
+Testing:
+- gmake lean-version: Shows Lean 4.21.0 and Lake 5.0.0
+- gmake lean-test: Successfully runs #check (1 + 1 : Nat)
+- Paths match actual installation in tools/formal-methods/lean
+
+Implementation:
+- Added lean-test, lean-check-compat, clean-lean targets
+- Fixed LEAN_DIR to match reality (lean not lean4)
+- Updated download to use wget matching actual history
+- All targets tested and working
