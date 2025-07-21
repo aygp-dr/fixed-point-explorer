@@ -1,0 +1,18 @@
+Prompt: Fix the makefile so it uses gmake for MAKE and that help is the default target.
+Make setup should download the tools for formal methods supporting this;
+gmake deps should check that we have the required tools.
+If there's any logic in the makefile move it to scripts/ with proper targets.
+
+Implementation:
+- Updated Makefile to use gmake explicitly with MAKE := gmake
+- Set help as default target with .DEFAULT_GOAL := help
+- Created scripts/deps.sh to check for Scheme implementations and tools
+- Created scripts/setup.sh to install formal methods tools (Lean 4)
+- Added self-documenting help with grep pattern matching
+- Integrated Lean 4.21.0 installation from GitHub issue #1
+
+Clarifications:
+- Used ## comments for self-documenting help
+- Scripts use portable sh instead of bash
+- Added color output for better UX
+- Included platform detection for OS-specific installation
