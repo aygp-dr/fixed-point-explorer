@@ -7,7 +7,8 @@ MAKE := gmake
 
 .PHONY: help all test test-guile test-chez test-racket clean deps setup lean-tools
 .PHONY: repl-guile repl-chez repl-racket benchmark test-guile-extra test-chez-extra
-.PHONY: lean-version install-deps
+.PHONY: lean-version install-deps test-integration test-integration-guile
+.PHONY: test-lean-fibonacci test-lean-ycombinator test-lean-properties test-lean-all test-lean-interactive
 
 # Scheme implementations
 GUILE := guile3
@@ -102,6 +103,13 @@ repl-chez: ## Start Chez REPL with project loaded
 repl-racket: ## Start Racket REPL
 	@$(RACKET) -i -l racket/init
 
+# Integration tests
+test-integration-guile: ## Run Guile integration tests
+	@echo "\n=== Running Guile Integration Tests ==="
+	@cd $(shell pwd) && $(GUILE) -L $(SRC_DIR)/portable $(TEST_DIR)/integration/test-guile-repl.scm
+
+test-integration: test-integration-guile ## Run all integration tests
+
 # Lean configuration
 LEAN_VERSION := v4.21.0
 LEAN_ARCHIVE := lean-$(LEAN_VERSION:v%=%)-linux.zip
@@ -185,6 +193,30 @@ clean-lean: ## Remove Lean installation
 
 # Alias for backward compatibility
 lean-tools: $(LEAN_DIR) ## Install Lean tools (alias for $(LEAN_DIR))
+
+# Lean test targets
+test-lean-fibonacci: $(LEAN_BIN) ## Test Fibonacci Lean specification
+	@echo "Testing Fibonacci.lean..."
+	@$(LEAN_BIN) docs/specs/lean/Fibonacci.lean >/dev/null 2>&1 && echo "✓ Passed" || echo "✗ Failed"
+
+test-lean-ycombinator: $(LEAN_BIN) ## Test Y Combinator Lean specification
+	@echo "Testing YCombinator.lean..."
+	@$(LEAN_BIN) docs/specs/lean/YCombinator.lean >/dev/null 2>&1 && echo "✓ Passed" || echo "✗ Failed"
+
+test-lean-properties: $(LEAN_BIN) ## Test Properties Lean specification
+	@echo "Testing Properties.lean..."
+	@$(LEAN_BIN) docs/specs/lean/Properties.lean >/dev/null 2>&1 && echo "✓ Passed" || echo "✗ Failed"
+
+test-lean-all: $(LEAN_BIN) ## Run all Lean tests
+	@echo "\n=== Running All Lean Tests ==="
+	@./scripts/test-lean.sh
+
+test-lean-interactive: $(LEAN_BIN) ## Interactive Lean proof checking
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: gmake test-lean-interactive FILE=docs/specs/lean/Fibonacci.lean"; \
+	else \
+		$(LEAN_BIN) $(FILE); \
+	fi
 
 # Benchmarks
 benchmark: ## Run performance benchmarks
