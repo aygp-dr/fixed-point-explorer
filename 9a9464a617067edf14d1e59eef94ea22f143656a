@@ -1,0 +1,11 @@
+Prompt: Add Emacs/Geiser configuration files
+
+Implementation:
+- Added .dir-locals.el for project-specific Emacs settings
+- Created geiser-config.el for multi-dialect Scheme support
+- No binaries, just elisp configuration files
+
+Purpose:
+- Enable seamless switching between Guile, Chez, and Racket
+- Configure proper load paths for each implementation
+- Support REPL-driven development workflow
