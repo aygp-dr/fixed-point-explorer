@@ -9,7 +9,5 @@
  '((emacs-lisp . t)))
 
 ;; Don't ask for confirmation on elisp blocks
-(setq org-confirm-babel-evaluate
-      (lambda (lang body)
-        (not (string= lang "emacs-lisp"))))
+(setq org-confirm-babel-evaluate nil)
 ;; Configuration:1 ends here
