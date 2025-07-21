@@ -1,0 +1,15 @@
+Prompt: Add wildcard exporter for markdown like %.md: %.org and gitignore README.md
+
+Implementation:
+- Added pattern rule %.md: %.org
+- Uses Emacs batch mode with org-md-export-to-markdown
+- Added README.md to .gitignore as it's generated
+
+Testing:
+- gmake README.md successfully created 7.7KB markdown file
+- Conversion includes TOC and proper formatting
+
+Rationale:
+- Keep source in Org format (richer features)
+- Generate Markdown for GitHub display
+- Don't commit generated files
