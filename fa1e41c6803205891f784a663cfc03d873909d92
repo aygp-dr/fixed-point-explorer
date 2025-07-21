@@ -1,0 +1,16 @@
+Prompt: Add non-phony task for SVG to PNG conversion and include t-shirt design in README
+
+Implementation:
+- Added pattern rule %.png: %.svg using rsvg-convert
+- Kept it simple per RFC #7 guidelines (one line, no conditionals)
+- Created docs/images/tshirt-design.png from SVG
+- Added image to README.org after overview text
+
+Testing:
+- rsvg-convert successfully created 15KB PNG from SVG
+- Makefile pattern rule works for any future SVG files
+
+Notes:
+- ImageMagick's convert/magick had core dump issues
+- rsvg-convert worked without issues
+- Following principle: simple commands in Makefile, complex logic in scripts
