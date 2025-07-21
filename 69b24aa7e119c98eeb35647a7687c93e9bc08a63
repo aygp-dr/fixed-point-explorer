@@ -1,0 +1,17 @@
+Prompt: Fix hardcoded versions, phony tasks, and use proper directory dependencies
+
+Issues identified:
+- Hardcoded version numbers in URLs
+- .PHONY used for targets that create directories
+- mkdir -p scattered instead of proper dependencies
+
+Implementation:
+- Added LEAN_ARCHIVE variable with pattern substitution
+- Created $(TOOLS_DIR) as explicit target
+- Used order-only prerequisites ( < /dev/null | ) for directories
+- Removed .PHONY from directory-creating targets
+- Made lean-tools an alias to $(LEAN_DIR)
+
+Testing:
+- gmake -n lean-tools shows "Nothing to be done" (directory exists)
+- Variables properly expand: lean-$(LEAN_VERSION:v%=%) becomes lean-4.21.0
