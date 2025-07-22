@@ -25,6 +25,8 @@ compiled/
 # Guile
 *.go
 .guile_history
+guile-*.core
+*.core
 
 # Chez Scheme
 *.boot
@@ -73,6 +75,12 @@ tools/formal-methods/lean/
 tools/formal-methods/lean-*/
 tools/formal-methods/*.zip
 tools/formal-methods/*.tar.gz
+
+# Lean build artifacts
+.lake/
+*.olean
+*.ilean
+*.trace
 
 # Experiments - exclude large downloads
 experiments/**/lean-*.zip
