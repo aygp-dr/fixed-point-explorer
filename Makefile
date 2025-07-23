@@ -5,7 +5,7 @@
 # Use gmake explicitly
 MAKE := gmake
 
-.PHONY: help all test test-guile test-chez test-racket clean deps setup lean-tools
+.PHONY: help all run test test-guile test-chez test-racket clean deps setup lean-tools
 .PHONY: repl-guile repl-chez repl-racket benchmark test-guile-extra test-chez-extra
 .PHONY: lean-version install-deps test-integration test-integration-guile
 .PHONY: test-lean-fibonacci test-lean-ycombinator test-lean-properties test-lean-all test-lean-interactive
@@ -48,6 +48,9 @@ help: ## Show this help message
 	@echo "  gmake repl-guile    # Start Guile REPL"
 
 all: test ## Run all tests (alias for test)
+
+run: ## Run Y combinator demonstrations
+	@./scripts/demo.sh
 
 deps: ## Check for required dependencies
 	@./scripts/deps.sh
